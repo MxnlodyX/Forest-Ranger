@@ -1,0 +1,31 @@
+# version: '3.8'
+
+services:
+  db:
+    ports:
+      - "3306:3306" # เปิด Port ให้เครื่องมืออย่าง DBeaver/DataGrip เข้าถึงได้ตอน Dev
+
+  backend:
+    volumes:
+      - ./backend:/app # Map โค้ดในเครื่องเข้าไปใน Container
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - FLASK_APP=run.py
+    # สั่ง Override CMD ทับ Gunicorn ด้วย Flask Dev Server
+    command: ["flask", "run", "--host=0.0.0.0", "--port=5000", "--reload"]
+
+  client:
+    build:
+      context: ./client
+      target: builder # หยุดแค่ Stage ของ Node.js
+    volumes:
+      - ./client:/app
+      - /app/node_modules # ป้องกัน node_modules ในเครื่องไปทับใน Container
+    ports:
+      - "5173:5173" # Port เริ่มต้นของ Vite
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Fallback polling สำหรับ Docker บน Windows
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

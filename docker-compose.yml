@@ -1,0 +1,38 @@
+# version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+    restart: always
+    env_file: .env
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  client:
+    build:
+      context: ./client
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:

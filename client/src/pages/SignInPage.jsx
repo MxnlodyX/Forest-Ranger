@@ -9,15 +9,17 @@ export function SignInPage() {
 
             {/* Header Section */}
             <div className="flex flex-col items-center mb-8 text-center">
+            
                 <div className="w-12 h-12 bg-[#153c29] text-white rounded-full flex justify-center items-center mb-4">
                     <svg width="20" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                         <path d="M12 8v4"></path>
                         <path d="M12 16h.01"></path>
                     </svg>
+                    
                 </div>
-                <h1 className="text-2xl font-bold mb-2 tracking-wide">Enterprise Security</h1>
-                <p className="text-sm text-[#8c9b95]">Secure access to organizational assets</p>
+                <h1 className="text-2xl font-bold mb-2 tracking-wide">Forest Shield</h1>
+                <p className="text-sm text-[#8c9b95]">Defends Forest Ecosystems</p>
             </div>
 
             {/* Form Section */}
@@ -85,16 +87,13 @@ export function SignInPage() {
                 </button>
             </form>
 
-            {/* Footer Link */}
-            <div className="text-center mt-6 text-[13px] text-[#8c9b95]">
-                Forgot Password? <a href="#contact" className="text-[#2d734e] font-medium hover:underline ml-1">Contact Admin</a>
-            </div>
+       
         </div>
 
         {/* System Status */}
         <div className="mt-8 flex items-center gap-2 text-[11px] font-semibold text-[#8c9b95] tracking-[1.5px]">
             <span className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
-            SYSTEM STATUS: OPERATIONAL
+        Agile Software Development, 2026
         </div>
 
     </div>

@@ -1,17 +1,50 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/useAppContext';
+import { api } from '../services/api';
 
 export function FieldOpsSignInPage() {
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
     const { loginAs } = useAppContext();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // จำลองการล็อกอินของเจ้าหน้าที่ภาคสนาม
-        loginAs('fieldops', { name: 'Ranger 01', role: 'fieldops' });
-        navigate('/field-ops/home'); // เปลี่ยนไปหน้าแผนที่หรือแดชบอร์ดภาคสนาม
+
+        if (!username.trim() || !password) {
+            setErrorMessage('Please enter both username and password.');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            setErrorMessage('');
+
+            const data = await api.post('/api/fieldops-portal/sign_in', {
+                username: username.trim(),
+                password,
+            });
+
+            loginAs('fieldops', {
+                id: data.user.staff_id,
+                username: data.user.username,
+                name: data.user.name,
+                titleRole: data.user.title_role,
+                profileImage: data.user.profile_image,
+                role: 'fieldops',
+                status: data.user.status,
+            }, { remember: rememberMe });
+            navigate('/field-ops/home');
+        } catch (error) {
+            setErrorMessage(error.message || 'Unable to sign in.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -57,6 +90,9 @@ export function FieldOpsSignInPage() {
                         <input
                             type="text"
                             placeholder="FRS-XXXX"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            disabled={isSubmitting}
                             className="w-full bg-[#0d1611] border border-emerald-900/50 rounded-xl py-4 px-5 text-lg text-emerald-50 font-mono focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder-emerald-800/50"
                         />
                     </div>
@@ -68,6 +104,9 @@ export function FieldOpsSignInPage() {
                             <input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                disabled={isSubmitting}
                                 className="w-full bg-[#0d1611] border border-emerald-900/50 rounded-xl py-4 pl-5 pr-12 text-lg text-emerald-50 font-mono tracking-widest focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder-emerald-800/50"
                             />
                             <button
@@ -84,17 +123,33 @@ export function FieldOpsSignInPage() {
                         </div>
                     </div>
 
+                    <label className="flex items-center gap-2 cursor-pointer text-emerald-300/80 text-xs font-mono tracking-wide uppercase">
+                        <input
+                            type="checkbox"
+                            className="accent-emerald-500"
+                            checked={rememberMe}
+                            onChange={() => setRememberMe((prev) => !prev)}
+                            disabled={isSubmitting}
+                        />
+                        Remember session on this device
+                    </label>
+
                     {/* Submit Button */}
                     <button
                         type="submit"
+                        disabled={isSubmitting}
                         className="mt-4 w-full bg-emerald-500 hover:bg-emerald-400 text-[#070b09] rounded-xl py-4 font-black text-[16px] tracking-wider uppercase flex justify-center items-center gap-3 transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.4)]"
                     >
-                        Initiate Patrol
+                        {isSubmitting ? 'Signing in...' : 'Initiate Patrol'}
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M5 12h14"></path>
                             <path d="M12 5l7 7-7 7"></path>
                         </svg>
                     </button>
+
+                    {errorMessage && (
+                        <p className="text-sm text-red-400 mt-1" role="alert">{errorMessage}</p>
+                    )}
                 </form>
 
                 {/* Back to Base Link */}

@@ -13,10 +13,54 @@ export const statData = [
 ];
 
 export const taskData = [
-  { id: 1, title: 'Inspect perimeter fence', time: 'Due 10:00', completed: false, priority: 'High' },
-  { id: 2, title: 'Morning briefing sync', time: 'Completed 07:30', completed: true, priority: 'Normal' },
-  { id: 3, title: 'Water source quality check', time: 'Creek Delta station', completed: false, priority: 'Normal' },
-  { id: 4, title: 'Camera trap battery replacement', time: 'Zone C camera #4', completed: false, priority: 'High' },
+  {
+    id: 1,
+    title: 'Inspect perimeter fence',
+    objective: 'Check for damaged fence segments and signs of intrusion.',
+    destination: 'Northern Perimeter Gate 2',
+    zone: 'Northern Sector A',
+    coordinate: '14.442100, 101.376200',
+    eta: '25 MIN',
+    time: 'Due 10:00',
+    completed: false,
+    priority: 'High',
+  },
+  {
+    id: 2,
+    title: 'Morning briefing sync',
+    objective: 'Confirm weather risk, route changes, and radio channels.',
+    destination: 'Ridge 7 Patrol Hut',
+    zone: 'Eastern Valley',
+    coordinate: '14.435800, 101.380500',
+    eta: '15 MIN',
+    time: 'Completed 07:30',
+    completed: true,
+    priority: 'Medium',
+  },
+  {
+    id: 3,
+    title: 'Water source quality check',
+    objective: 'Collect water sample and report wildlife activity nearby.',
+    destination: 'Creek Delta station',
+    zone: 'Eastern Valley',
+    coordinate: '14.445300, 101.381000',
+    eta: '40 MIN',
+    time: 'Due 13:00',
+    completed: false,
+    priority: 'Medium',
+  },
+  {
+    id: 4,
+    title: 'Camera trap battery replacement',
+    objective: 'Replace battery and verify image capture status.',
+    destination: 'Zone C camera #4',
+    zone: 'Western Perimeter',
+    coordinate: '14.429100, 101.361900',
+    eta: '55 MIN',
+    time: 'Due 15:30',
+    completed: false,
+    priority: 'High',
+  },
 ];
 
 export const incidentTemplates = [

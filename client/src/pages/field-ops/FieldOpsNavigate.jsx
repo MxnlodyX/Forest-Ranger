@@ -2,36 +2,29 @@
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-// 1. สร้าง Icon ลูกศรนำทาง (ตัวเรา)
-const navigationArrowIcon = L.divIcon({
-  html: `
-    <div class="relative flex items-center justify-center transform -rotate-45">
-      <div class="absolute w-16 h-16 bg-emerald-500/20 rounded-full animate-ping"></div>
-      <div class="w-10 h-10 bg-white rounded-full shadow-[0_0_15px_rgba(0,0,0,0.5)] flex items-center justify-center border-4 border-emerald-500 relative z-10">
-        <svg class="w-5 h-5 text-emerald-600 transform rotate-45" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-        </svg>
-      </div>
-    </div>
-  `,
-  className: '',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-});
-
-// 2. สร้าง Icon จุดหมายปลายทาง
-const destinationIcon = L.divIcon({
+const locationMarkerIcon = L.divIcon({
   html: `
     <div class="flex items-center justify-center">
-      <div class="w-8 h-8 bg-slate-900 border-2 border-emerald-400 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)] relative z-10">
-        <div class="w-3 h-3 bg-emerald-400 rounded-full"></div>
-      </div>
+      <div class="w-7 h-7 bg-emerald-600 border-2 border-white rounded-full shadow-[0_0_12px_rgba(16,185,129,0.45)]"></div>
     </div>
   `,
   className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
+const currentLocationIcon = L.divIcon({
+  html: `
+    <div class="flex items-center justify-center">
+      <div class="w-7 h-7 bg-blue-600 border-2 border-white rounded-full shadow-[0_0_12px_rgba(37,99,235,0.45)]"></div>
+      <div class="absolute w-11 h-11 bg-blue-500/20 rounded-full"></div>
+    </div>
+  `,
+  className: '',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
 });
 
 export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
@@ -64,15 +57,16 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
         <MapContainer 
           center={currentLocation} // โฟกัสกล้องที่ตำแหน่งปัจจุบันของเรา
           zoom={16} // ซูมใกล้ๆ แบบโหมดนำทาง
-          zoomControl={false} 
+          zoomControl={false}
+          scrollWheelZoom
           className="w-full h-full"
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           
           {/* เส้นทางนำทาง (Route Line) */}
           <Polyline 
             positions={routePositions} 
-            color="#34d399" // สีเขียว Emerald
+            color="red" // สีแดง
             weight={6} 
             opacity={0.8}
             dashArray="10, 10" // ทำเป็นเส้นประ
@@ -80,10 +74,10 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
           />
 
           {/* จุดหมายปลายทาง */}
-          <Marker position={target.position} icon={destinationIcon} />
+          <Marker position={target.position} icon={locationMarkerIcon} />
           
           {/* ตำแหน่งปัจจุบัน (ตัวเรา) */}
-          <Marker position={currentLocation} icon={navigationArrowIcon} />
+          <Marker position={currentLocation} icon={currentLocationIcon} />
         </MapContainer>
       </div>
 

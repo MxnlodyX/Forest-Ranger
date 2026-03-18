@@ -172,9 +172,9 @@ export function PatrolAreasPage() {
         prev.map((item) =>
           item.id === editingLocationId
             ? {
-                ...item,
-                ...formData,
-              }
+              ...item,
+              ...formData,
+            }
             : item,
         ),
       );
@@ -344,9 +344,8 @@ export function PatrolAreasPage() {
                   filteredLocations.map((item) => (
                     <tr
                       key={item.id}
-                      className={`cursor-pointer transition hover:bg-gray-50 ${
-                        selectedLocationId === item.id ? 'bg-blue-50/60' : 'bg-white'
-                      }`}
+                      className={`cursor-pointer transition hover:bg-gray-50 ${selectedLocationId === item.id ? 'bg-blue-50/60' : 'bg-white'
+                        }`}
                       onClick={() => setSelectedLocationId(item.id)}
                     >
                       <td className="px-4 py-3 align-top">
@@ -605,16 +604,6 @@ export function PatrolAreasPage() {
           </div>
         </div>
       )}
-
-      <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-        <p className="flex items-center gap-2 font-medium">
-          <ShieldCheck size={16} />
-          Ready for map API integration
-        </p>
-        <p className="mt-1 text-emerald-800">
-          โครงสร้างข้อมูลเตรียมไว้แล้วสำหรับผูกกับระบบแผนที่จริง โดยใช้ฟิลด์ Coordinate และ Type
-        </p>
-      </div>
     </section>
   );
 }

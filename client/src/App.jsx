@@ -9,7 +9,13 @@ import { PatrolAreasPage } from './pages/backoffice/PatrolAreasPage';
 import { BackofficeSignInPage } from './pages/BackofficeSignInPage';
 import { TaskAssignPage } from './pages/backoffice/TaskAssignPage';
 import { FieldOpsHomePage } from './pages/field-ops/FieldOpsHomePage';
+import { FieldOpsLayout } from './pages/field-ops/FieldOpsLayout';
+import { FieldOpsMapPage } from './pages/field-ops/FieldOpsMapPage';
+import { FieldOpsProfilePage } from './pages/field-ops/FieldOpsProfilePage';
+import { FieldOpsReportPage } from './pages/field-ops/FieldOpsReportPage';
+import { FieldOpsTasksPage } from './pages/field-ops/FieldOpsTasksPage';
 import { FieldOpsSignInPage } from './pages/FieldOpsSignInPage';
+import { FieldOpsNavigate } from './pages/field-ops/FieldOpsNavigate';
 
 
 function App() {
@@ -31,8 +37,19 @@ function App() {
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['fieldops']} />}>
-          <Route path="/field-ops/home" element={<FieldOpsHomePage />} />
+          <Route element={<FieldOpsLayout />}>
+            <Route path="/field-ops/home" element={<FieldOpsHomePage />} />
+            <Route path="/field-ops/map" element={<FieldOpsMapPage />} />
+            <Route path="/field-ops/tasks" element={<FieldOpsTasksPage />} />
+            <Route path="/field-ops/report" element={<FieldOpsReportPage />} />
+            <Route path="/field-ops/profile" element={<FieldOpsProfilePage />} />
+            <Route path="/field-ops/navigate" element={<FieldOpsNavigate />} />
+          </Route>
         </Route>
+
+        <Route path="/field-ops" element={<Navigate to="/field-ops/home" replace />} />
+
+        <Route path="*" element={<Navigate to="/signin/backoffice" replace />} />
 
       </Routes>
     </AppProvider>

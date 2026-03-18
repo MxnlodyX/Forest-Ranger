@@ -14,6 +14,11 @@ export default defineConfig({
       '/api': {
         target: 'http://backend:5000', // อ้างอิงชื่อ Service ใน docker-compose
         changeOrigin: true,
+      },
+      // ให้ไฟล์รูปจาก backend static folder เข้าถึงได้ผ่าน dev server
+      '/static': {
+        target: 'http://backend:5000',
+        changeOrigin: true,
       }
     }
   }

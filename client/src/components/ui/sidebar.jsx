@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../../context/AppContext';
+import { useAppContext } from '../../context/useAppContext';
 import {
     LayoutDashboard, Users, Archive, BarChart, Map, LogOut
 } from 'lucide-react';

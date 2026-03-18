@@ -5,8 +5,16 @@ async function request(endpoint, options = {}) {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-  return res.json();
+
+  const isJson = (res.headers.get('content-type') || '').includes('application/json');
+  const data = isJson ? await res.json() : null;
+
+  if (!res.ok) {
+    const message = data?.error || `HTTP ${res.status}: ${res.statusText}`;
+    throw new Error(message);
+  }
+
+  return data;
 }
 
 export const api = {

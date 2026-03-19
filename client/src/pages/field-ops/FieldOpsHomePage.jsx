@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
-import { missionData, statData, taskData } from './mockData';
+import React, { useCallback } from 'react';
+import { missionData, statData } from './mockData';
+import { useAppContext } from '../../context/useAppContext';
+import { useApi } from '../../hooks/useApi';
+import { api } from '../../services/api';
 
 export function FieldOpsHomePage() {
-  const [tasks, setTasks] = useState(taskData.slice(0, 3));
+  const { currentUser } = useAppContext();
+  const staffId = currentUser?.id;
 
-  const toggleTask = (id) => {
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
-  };
+  const fetcher = useCallback(
+    () => (staffId ? api.get(`/api/tasks/assigned/${staffId}`) : Promise.resolve([])),
+    [staffId],
+  );
+  const { data: rawTasks, loading } = useApi(fetcher, [staffId]);
+
+  // แสดงเฉพาะ task ที่ยังไม่ Done
+  const pendingTasks = (rawTasks ?? []).filter((t) => t.status !== 'Done').slice(0, 5);
 
   return (
     <section className="flex flex-col gap-6">
@@ -81,25 +88,41 @@ export function FieldOpsHomePage() {
         <div className="flex flex-col gap-3 mb-6">
           <h2 className="text-base font-bold text-white">Today's Tasks</h2>
           <div className="flex flex-col gap-2.5">
-            {tasks.map((task) => (
-              <div key={task.id} onClick={() => toggleTask(task.id)} className={`bg-[#1e293b] rounded-xl p-4 flex items-center justify-between border cursor-pointer transition-colors ${task.completed ? 'border-emerald-500/30' : 'border-slate-700/50'}`}>
-                <div className="flex items-center gap-4">
-                  {/* Checkbox */}
-                  <div className={`w-5 h-5 rounded border flex justify-center items-center transition-colors ${task.completed ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'border-slate-500 bg-[#111820]'}`}>
-                    {task.completed && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+            {loading ? (
+              <p className="text-center text-xs text-slate-500 py-4">Loading tasks…</p>
+            ) : pendingTasks.length === 0 ? (
+              <p className="text-center text-xs text-slate-500 py-4">No pending tasks for today.</p>
+            ) : (
+              pendingTasks.map((task) => (
+                <div
+                  key={task.task_id}
+                  className="bg-[#1e293b] rounded-xl p-4 flex items-center justify-between border border-slate-700/50"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Status dot */}
+                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${task.status === 'In Progress' ? 'bg-amber-400' : 'bg-sky-400'}`} />
+                    {/* Text */}
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-100">{task.task_title}</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {task.assigned_date ? `Due ${task.assigned_date}` : '—'}
+                        {task.eta ? ` • ETA ${task.eta}` : ''}
+                      </p>
+                    </div>
                   </div>
-                  {/* Text */}
-                  <div>
-                    <h4 className={`text-sm font-bold ${task.completed ? 'text-slate-300 line-through decoration-slate-500' : 'text-slate-100'}`}>{task.title}</h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{task.time}</p>
-                  </div>
+                  {/* Priority pill */}
+                  <span className={`text-[10px] px-2 py-1 rounded-full font-bold tracking-wide flex-shrink-0 ${
+                    task.priority === 'High'
+                      ? 'bg-red-900/40 text-red-300'
+                      : task.priority === 'Medium'
+                      ? 'bg-amber-900/40 text-amber-300'
+                      : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {task.priority}
+                  </span>
                 </div>
-                {/* 3 dots */}
-                <button className="text-slate-500 p-1">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
-                </button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
     </section>

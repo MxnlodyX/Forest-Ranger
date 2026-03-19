@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export function resolveMediaUrl(path) {
   if (!path) return '';
@@ -29,9 +29,9 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
-  get:    (endpoint)        => request(endpoint),
-  post:   (endpoint, body) => request(endpoint, { method: 'POST',   body: JSON.stringify(body) }),
+  get:      (endpoint)       => request(endpoint),
+  post:     (endpoint, body) => request(endpoint, { method: 'POST',   body: JSON.stringify(body) }),
   postForm: (endpoint, formData) => request(endpoint, { method: 'POST', body: formData }),
-  put:    (endpoint, body) => request(endpoint, { method: 'PUT',    body: JSON.stringify(body) }),
-  delete: (endpoint)       => request(endpoint, { method: 'DELETE' }),
+  put:      (endpoint, body) => request(endpoint, { method: 'PUT',    body: JSON.stringify(body) }),
+  delete:   (endpoint)       => request(endpoint, { method: 'DELETE' }),
 };

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS staff (
     contact_number VARCHAR(20),
     title_role VARCHAR(100),
     staff_role VARCHAR(100) NOT NULL,
+    area VARCHAR(100), -- <--- เติมคอลัมน์นี้เข้ามาให้ตรงกับ Frontend
     status ENUM('Off Duty', 'On Duty', 'Leave') DEFAULT 'Off Duty',
     profile_image VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

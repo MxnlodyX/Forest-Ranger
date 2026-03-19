@@ -211,3 +211,112 @@ WHERE s.username = 'fo_ranger_01'
       SELECT 1 FROM location l
       WHERE l.location_name = 'Pha Kluai Mai Trailhead Checkpoint'
   );
+
+-- ============================================
+-- Seed tasks (MVP)
+-- ============================================
+
+INSERT INTO task (
+    task_title,
+    objective,
+    description,
+    destination,
+    assigned_to,
+    location_id,
+    priority,
+    status,
+    eta,
+    assigned_date
+)
+SELECT
+    'Patrol Haew Suwat Waterfall Sector',
+    'Inspect the waterfall perimeter for signs of illegal activity and check trail conditions.',
+    'Conduct a full sweep of the waterfall area. Document any damaged signage or suspicious activity and report via radio.',
+    'Haew Suwat Waterfall Patrol Point',
+    ranger.staff_id,
+    loc.location_id,
+    'High',
+    'Todo',
+    '2h 30m',
+    CURRENT_DATE
+FROM
+    staff ranger,
+    location loc
+WHERE
+    ranger.username = 'fo_ranger_01'
+    AND loc.location_name = 'Haew Suwat Waterfall Patrol Point'
+    AND NOT EXISTS (
+        SELECT 1 FROM task t
+        WHERE t.task_title = 'Patrol Haew Suwat Waterfall Sector'
+    )
+LIMIT 1;
+
+INSERT INTO task (
+    task_title,
+    objective,
+    description,
+    destination,
+    assigned_to,
+    location_id,
+    priority,
+    status,
+    eta,
+    assigned_date
+)
+SELECT
+    'Tourist Flow Monitoring - Pha Kluai Mai',
+    'Monitor tourist numbers at trailhead, enforce safety rules, and log wildlife sightings.',
+    'Station at trailhead from 08:00-12:00. Record headcount every 30 minutes. Report any wildlife near the trail immediately.',
+    'Pha Kluai Mai Trailhead Checkpoint',
+    ranger.staff_id,
+    loc.location_id,
+    'Medium',
+    'Todo',
+    '4h 00m',
+    CURRENT_DATE
+FROM
+    staff ranger,
+    location loc
+WHERE
+    ranger.username = 'fo_ranger_01'
+    AND loc.location_name = 'Pha Kluai Mai Trailhead Checkpoint'
+    AND NOT EXISTS (
+        SELECT 1 FROM task t
+        WHERE t.task_title = 'Tourist Flow Monitoring - Pha Kluai Mai'
+    )
+LIMIT 1;
+
+INSERT INTO task (
+    task_title,
+    objective,
+    description,
+    destination,
+    assigned_to,
+    location_id,
+    priority,
+    status,
+    eta,
+    assigned_date
+)
+SELECT
+    'Camera Trap Maintenance - Eastern Valley',
+    'Replace batteries and verify image capture status on all camera traps in the Eastern Valley zone.',
+    'Visit camera trap stations EV-01 through EV-04. Replace batteries, clear memory cards, and confirm operation.',
+    'Eastern Valley Camera Station EV-02',
+    ranger.staff_id,
+    loc.location_id,
+    'Medium',
+    'In Progress',
+    '1h 45m',
+    CURRENT_DATE
+FROM
+    staff ranger,
+    location loc
+WHERE
+    ranger.username = 'fo_ranger_01'
+    AND loc.location_name = 'Pha Kluai Mai Trailhead Checkpoint'
+    AND NOT EXISTS (
+        SELECT 1 FROM task t
+        WHERE t.task_title = 'Camera Trap Maintenance - Eastern Valley'
+    )
+LIMIT 1;

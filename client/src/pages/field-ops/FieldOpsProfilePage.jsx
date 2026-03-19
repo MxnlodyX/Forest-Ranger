@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 // Assuming this is your context path based on the snippet
 import { useAppContext } from '../../context/useAppContext';
-import { api } from '../../services/api';
+import { api, resolveMediaUrl } from '../../services/api';
 
 // Helper function to extract initials for the avatar
 const getInitials = (name) => {
@@ -40,7 +40,7 @@ export function FieldOpsProfilePage() {
             <div className="bg-[#1e293b] border border-slate-700/60 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-xl">
                 {currentUser?.profileImage ? (
                     <img
-                        src={currentUser.profileImage}
+                        src={resolveMediaUrl(currentUser.profileImage)}
                         alt={currentUser?.name ?? 'Field Ranger'}
                         className="w-20 h-20 rounded-full object-cover border-2 border-emerald-500/20 mb-4"
                     />

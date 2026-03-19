@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/useAppContext';
-import { api } from '../../services/api';
+import { api, resolveMediaUrl } from '../../services/api';
 import {
     LayoutDashboard, Users, Archive, BarChart, Map, LogOut
 } from 'lucide-react';
@@ -77,7 +77,7 @@ export function Sidebar() {
                 <div className="flex items-center space-x-4 px-4 py-2">
                     {currentUser?.profileImage ? (
                         <img
-                            src={currentUser.profileImage}
+                            src={resolveMediaUrl(currentUser.profileImage)}
                             alt={name}
                             className="w-8 h-8 rounded-full object-cover"
                         />

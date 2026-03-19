@@ -1,38 +1,61 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Search, Plus, X, Edit2, Trash2, Eye, CheckCircle, Camera
 } from 'lucide-react';
+import { api, resolveMediaUrl } from '../../services/api';
 
-// ข้อมูลจำลอง (Mock Data)
-const initialStaff = [
-    { id: 1, name: 'Jonathan Silva', title: 'Senior Ranger', role: 'Ranger', area: 'Northern Sector A', contact: '+1 555-0101', status: 'On Duty' },
-    { id: 2, name: 'Elena Vance', title: 'Wildlife Biologist', role: 'Specialist', area: 'Eastern Valley', contact: '+1 555-0102', status: 'On Duty' },
-    { id: 3, name: 'David Miller', title: 'Patrol Officer', role: 'Guard', area: 'Western Perimeter', contact: '+1 555-0103', status: 'Off Duty' },
-];
+function mapApiStaffToUi(staff) {
+    return {
+        id: staff.staff_id,
+        name: staff.full_name,
+        title: staff.title_role,
+        role: staff.staff_role,
+        area: '-',
+        contact: staff.contact_number || '-',
+        status: staff.status,
+        username: staff.username,
+        image: staff.profile_image || null,
+    };
+}
 
 export function HRMDashboard() {
-    const [staffList, setStaffList] = useState(initialStaff);
+    const [staffList, setStaffList] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
 
     // Modal & Toast States
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState(''); // 'VIEW', 'ADD', 'EDIT', 'DELETE'
+    const [modalType, setModalType] = useState('');
     const [selectedStaff, setSelectedStaff] = useState(null);
-    const [toastMessage, setToastMessage] = useState('');
+    const [toastState, setToastState] = useState({ message: '', type: 'success' });
 
     // Form State
     const [formData, setFormData] = useState({
-        name: '', title: '', role: 'Ranger', area: '', contact: '', status: 'Off Duty', username: '', password: '', image: null
+        name: '', title: '', role: 'Field-Ops', area: '', contact: '', status: 'Off Duty', username: '', password: '', image: null
     });
+
+    useEffect(() => {
+        const loadStaff = async () => {
+            try {
+                const data = await api.get('/api/staff');
+                setStaffList(Array.isArray(data) ? data.map(mapApiStaffToUi) : []);
+            } catch (error) {
+                showToast(error.message || 'Unable to load staff list');
+            }
+        };
+
+        loadStaff();
+    }, []);
 
     // เปิด Modal พร้อมเซ็ตข้อมูล
     const openModal = (type, staff = null) => {
         setModalType(type);
         setSelectedStaff(staff);
         if (staff && (type === 'EDIT' || type === 'VIEW')) {
-            setFormData(staff);
+            setFormData({ ...staff, password: '' });
         } else {
-            setFormData({ name: '', title: '', role: 'Ranger', area: '', contact: '', status: 'Off Duty', username: '', password: '', image: null });
+            setFormData({ name: '', title: '', role: 'Field-Ops', area: '', contact: '', status: 'Off Duty', username: '', password: '', image: null });
         }
         setIsModalOpen(true);
     };
@@ -40,36 +63,137 @@ export function HRMDashboard() {
     const closeModal = () => setIsModalOpen(false);
 
     // แสดงแจ้งเตือน
-    const showToast = (message) => {
-        setToastMessage(message);
-        setTimeout(() => setToastMessage(''), 3000);
+    const showToast = (message, type = 'success') => {
+        setToastState({ message, type });
+        setTimeout(() => setToastState({ message: '', type: 'success' }), 3000);
     };
 
     // จัดการ Submit (Add / Edit)
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (modalType === 'ADD') {
-            const newStaff = { ...formData, id: Date.now() };
-            setStaffList([newStaff, ...staffList]);
-            showToast('Staff member added successfully');
-        } else if (modalType === 'EDIT') {
-            setStaffList(staffList.map(s => s.id === selectedStaff.id ? { ...formData, id: s.id } : s));
-            showToast('Staff profile updated successfully');
+
+        if (isUploadingImage) {
+            showToast('Image is still uploading. Please wait.');
+            return;
         }
-        closeModal();
+
+        const requiredFields = [
+            formData.username,
+            formData.password,
+            formData.name,
+            formData.contact,
+            formData.title,
+            formData.role,
+            formData.status,
+        ];
+        if (requiredFields.some((value) => !String(value ?? '').trim())) {
+            showToast('Please fill in all required fields (image is optional).', 'error');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+
+            if (modalType === 'ADD') {
+                const payload = {
+                    username: formData.username.trim(),
+                    password: formData.password,
+                    full_name: formData.name.trim(),
+                    contact_number: formData.contact.trim(),
+                    title_role: formData.title.trim(),
+                    staff_role: formData.role,
+                    status: formData.status,
+                    profile_image: formData.image || null,
+                };
+
+                const result = await api.post('/api/add_new_staff', payload);
+                const created = result?.staff ? mapApiStaffToUi(result.staff) : { ...formData, id: Date.now() };
+                setStaffList([created, ...staffList]);
+                showToast('Staff member added successfully', 'success');
+            } else if (modalType === 'EDIT') {
+                const payload = {
+                    staff_id: selectedStaff.id,
+                    username: formData.username.trim(),
+                    password: formData.password,
+                    full_name: formData.name.trim(),
+                    contact_number: formData.contact.trim(),
+                    title_role: formData.title.trim(),
+                    staff_role: formData.role,
+                    status: formData.status,
+                    profile_image: formData.image || null,
+                };
+
+                const result = await api.post('/api/edit_staff', payload);
+                const updated = result?.staff ? mapApiStaffToUi(result.staff) : { ...formData, id: selectedStaff.id };
+                setStaffList(staffList.map((s) => (s.id === selectedStaff.id ? updated : s)));
+                showToast('Staff profile updated successfully', 'success');
+            }
+
+            closeModal();
+        } catch (error) {
+            showToast(error.message || 'Unable to save staff data', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // จัดการลบข้อมูล
-    const handleDelete = () => {
-        setStaffList(staffList.filter(s => s.id !== selectedStaff.id));
-        showToast('Staff member deleted successfully');
-        closeModal();
+    const handleDelete = async () => {
+        if (!selectedStaff?.id) {
+            showToast('Invalid staff selection', 'error');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await api.delete(`/api/delete_staff/${selectedStaff.id}`);
+            setStaffList(staffList.filter((s) => s.id !== selectedStaff.id));
+            showToast('Staff member deleted successfully', 'success');
+            closeModal();
+        } catch (error) {
+            showToast(error.message || 'Unable to delete staff data', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // ฟิลเตอร์ข้อมูลตาม Search
     const filteredStaff = staffList.filter(s =>
         s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const handleImageChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp'];
+        if (!allowedMimeTypes.includes(file.type)) {
+            showToast('Unsupported file type. Please upload JPG, PNG, or WEBP.', 'error');
+            e.target.value = '';
+            return;
+        }
+
+        const maxFileSize = 5 * 1024 * 1024;
+        if (file.size > maxFileSize) {
+            showToast('Image size must be 5MB or less', 'error');
+            e.target.value = '';
+            return;
+        }
+
+        try {
+            setIsUploadingImage(true);
+            const form = new FormData();
+            form.append('image', file);
+
+            const result = await api.postForm('/api/upload_profile_image', form);
+            setFormData((prev) => ({ ...prev, image: result.image_url }));
+        } catch (error) {
+            showToast(error.message || 'Unable to upload image', 'error');
+        } finally {
+            setIsUploadingImage(false);
+            e.target.value = '';
+        }
+    };
 
     return (
         <>
@@ -112,9 +236,18 @@ export function HRMDashboard() {
                         {filteredStaff.map(staff => (
                             <div key={staff.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors group">
                                 <div className="flex items-center space-x-4 w-1/2">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
-                                        {staff.name.charAt(0)}
-                                    </div>
+                                    {
+                                        staff.image ? (
+                                            <img src={resolveMediaUrl(staff.image)} alt="Profile" className="
+                                            w-10 h-10 rounded-full object-cover border-2 border-emerald-500/20"
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
+                                                {staff.name.charAt(0)}
+                                            </div>
+                                        )
+                                    }
+
                                     <div>
                                         <p className="text-gray-900 font-medium">{staff.name}</p>
                                         <p className="text-xs text-gray-500">{staff.title} • {staff.area}</p>
@@ -170,7 +303,7 @@ export function HRMDashboard() {
                                     <div className="flex flex-col items-center justify-center">
                                         <div className="relative w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden hover:bg-gray-100 hover:border-emerald-400 transition-all cursor-pointer group">
                                             {formData.image ? (
-                                                <img src={formData.image} alt="Profile" className="w-full h-full object-cover" />
+                                                <img src={resolveMediaUrl(formData.image)} alt="Profile" className="w-full h-full object-cover" />
                                             ) : (
                                                 <div className="flex flex-col items-center text-gray-400 group-hover:text-emerald-500 transition-colors">
                                                     <Camera size={24} className="mb-1" />
@@ -182,16 +315,13 @@ export function HRMDashboard() {
                                                 type="file"
                                                 accept="image/*"
                                                 className="absolute inset-0 opacity-0 cursor-pointer"
-                                                onChange={(e) => {
-                                                    const file = e.target.files[0];
-                                                    if (file) {
-                                                        // สร้าง URL ชั่วคราวสำหรับ Preview รูป
-                                                        setFormData({ ...formData, image: URL.createObjectURL(file) });
-                                                    }
-                                                }}
+                                                onChange={handleImageChange}
+                                                disabled={isUploadingImage}
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-400 mt-2">Please uplaod in format JPG or PNG</p>
+                                        <p className="text-xs text-gray-400 mt-2">
+                                            {isUploadingImage ? 'Uploading image...' : 'Please upload JPG, PNG, or WEBP'}
+                                        </p>
                                     </div>
 
                                     {/* --- Account Credentials --- */}
@@ -204,7 +334,7 @@ export function HRMDashboard() {
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-500 mb-1">Password</label>
-                                                <input type="password" required={modalType === 'ADD'} value={formData.password || ''} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" placeholder={modalType === 'EDIT' ? "Leave blank to keep current" : "••••••••"} />
+                                                <input type="password" required value={formData.password || ''} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" placeholder="••••••••" />
                                             </div>
                                         </div>
                                     </div>
@@ -233,7 +363,7 @@ export function HRMDashboard() {
                                                 <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 appearance-none">
                                                     <option>Field-Ops</option>
                                                     <option>Back-Office</option>
-                                          
+
                                                 </select>
                                             </div>
                                         </div>
@@ -243,8 +373,8 @@ export function HRMDashboard() {
                                 {/* Footer Buttons */}
                                 <div className="p-6 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50/50">
                                     <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-                                    <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-emerald-600/20">
-                                        {modalType === 'ADD' ? 'Create Staff Profile' : 'Save Changes'}
+                                    <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-emerald-600/20">
+                                        {isSubmitting ? 'Saving...' : modalType === 'ADD' ? 'Create Staff Profile' : 'Save Changes'}
                                     </button>
                                 </div>
                             </form>
@@ -254,21 +384,33 @@ export function HRMDashboard() {
                         {modalType === 'VIEW' && selectedStaff && (
                             <div>
                                 <div className="p-6 space-y-4">
-                                    <div className="flex items-center space-x-4 mb-6">
-                                        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xl font-bold">
-                                            {selectedStaff.name.charAt(0)}
+                                    {selectedStaff.image ? (
+                                        <div className="flex items-center space-x-4 mb-6">
+                                            <img src={resolveMediaUrl(selectedStaff.image)} alt="Profile" className="w-24 h-24 rounded-full object-cover border-2 border-emerald-500/20" />
+
+                                            <div>
+                                                <h3 className="text-xl font-bold text-gray-900">{selectedStaff.name}</h3>
+                                                <p className="text-emerald-600">{selectedStaff.title}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-xl font-bold text-gray-900">{selectedStaff.name}</h3>
-                                            <p className="text-emerald-600">{selectedStaff.title}</p>
+
+                                    ) : (
+                                        <div className="flex items-center space-x-4 mb-6">
+                                            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xl font-bold">
+                                                {selectedStaff.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-bold text-gray-900">{selectedStaff.name}</h3>
+                                                <p className="text-emerald-600">{selectedStaff.title}</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
+
                                     <div className="grid grid-cols-2 gap-y-4 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100">
                                         <div><p className="text-gray-500 text-xs">Role</p><p className="text-gray-900 font-medium mt-1">{selectedStaff.role}</p></div>
                                         <div><p className="text-gray-500 text-xs">Status</p>
                                             <span className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${selectedStaff.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{selectedStaff.status}</span>
                                         </div>
-                                        <div><p className="text-gray-500 text-xs">Assigned Area</p><p className="text-gray-900 font-medium mt-1">{selectedStaff.area}</p></div>
                                         <div><p className="text-gray-500 text-xs">Contact</p><p className="text-gray-900 font-medium mt-1">{selectedStaff.contact}</p></div>
                                     </div>
                                 </div>
@@ -286,7 +428,9 @@ export function HRMDashboard() {
                                 </div>
                                 <div className="p-6 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50/50">
                                     <button onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-                                    <button onClick={handleDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-red-600/20">Delete Staff</button>
+                                    <button onClick={handleDelete} disabled={isSubmitting} className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-red-600/20">
+                                        {isSubmitting ? 'Deleting...' : 'Delete Staff'}
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -295,14 +439,14 @@ export function HRMDashboard() {
             )}
 
             {/* Toast Notification (Success Alert) */}
-            {toastMessage && (
-                <div className="fixed bottom-6 right-6 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg shadow-emerald-600/30 flex items-center space-x-3 animate-fade-in-up z-50">
-                    <CheckCircle size={20} className="text-emerald-100" />
+            {toastState.message && (
+                <div className={`fixed bottom-6 right-6 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3 animate-fade-in-up z-50 ${toastState.type === 'error' ? 'bg-red-600 shadow-red-600/30' : 'bg-emerald-600 shadow-emerald-600/30'}`}>
+                    <CheckCircle size={20} className={toastState.type === 'error' ? 'text-red-100' : 'text-emerald-100'} />
                     <div>
-                        <p className="text-sm font-bold">Success!</p>
-                        <p className="text-xs text-emerald-50">{toastMessage}</p>
+                        <p className="text-sm font-bold">{toastState.type === 'error' ? 'Error' : 'Success'}</p>
+                        <p className="text-xs">{toastState.message}</p>
                     </div>
-                    <button onClick={() => setToastMessage('')} className="ml-4 text-emerald-100 hover:text-white"><X size={16} /></button>
+                    <button onClick={() => setToastState({ message: '', type: 'success' })} className="ml-4 text-white/80 hover:text-white"><X size={16} /></button>
                 </div>
             )}
 

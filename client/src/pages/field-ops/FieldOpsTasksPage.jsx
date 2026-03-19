@@ -11,12 +11,23 @@ const taskRequirements = [
   { key: 'zone',        label: 'Zone' },
 ];
 
+const getLocationLabel = (raw) => {
+  const locationName = String(raw.location_name ?? '').trim();
+  const locationSector = String(raw.location_sector ?? '').trim();
+
+  if (locationName && locationSector && locationName.toLowerCase() !== locationSector.toLowerCase()) {
+    return `${locationName} (${locationSector})`;
+  }
+
+  return locationName || locationSector;
+};
+
 const mapTaskForDisplay = (raw) => ({
   task_id:    raw.task_id,
   title:      raw.task_title || '',
   objective:  raw.objective  || '',
   destination: raw.destination || '',
-  zone:       raw.location_sector || raw.location_name || '',
+  zone:       getLocationLabel(raw),
   coordinate: raw.location_coordinates || '',
   eta:        raw.eta || '',
   time:       raw.assigned_date ? `Due ${raw.assigned_date}` : '—',
@@ -176,7 +187,7 @@ export function FieldOpsTasksPage() {
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
                   <MapPin size={12} className="text-sky-300" />
-                  {task.destination || '—'} • {task.zone || '—'}
+                    {task.zone || '—'} • {task.destination || '—'}
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
                   <Clock3 size={12} className="text-amber-300" />

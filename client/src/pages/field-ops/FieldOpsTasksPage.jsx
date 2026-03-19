@@ -1,25 +1,40 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { AlertTriangle, Clock3, MapPin, Target } from 'lucide-react';
-import { taskData } from './mockData';
+import { useAppContext } from '../../context/useAppContext';
+import { useApi } from '../../hooks/useApi';
+import { api } from '../../services/api';
 
 const taskRequirements = [
-  {
-    key: 'title',
-    label: 'Task title',
-  },
-  {
-    key: 'objective',
-    label: 'Objective',
-  },
-  {
-    key: 'destination',
-    label: 'Destination',
-  },
-  {
-    key: 'zone',
-    label: 'Zone',
-  },
+  { key: 'title',       label: 'Task title' },
+  { key: 'objective',   label: 'Objective' },
+  { key: 'destination', label: 'Destination' },
+  { key: 'zone',        label: 'Zone' },
 ];
+
+const getLocationLabel = (raw) => {
+  const locationName = String(raw.location_name ?? '').trim();
+  const locationSector = String(raw.location_sector ?? '').trim();
+
+  if (locationName && locationSector && locationName.toLowerCase() !== locationSector.toLowerCase()) {
+    return `${locationName} (${locationSector})`;
+  }
+
+  return locationName || locationSector;
+};
+
+const mapTaskForDisplay = (raw) => ({
+  task_id:    raw.task_id,
+  title:      raw.task_title || '',
+  objective:  raw.objective  || '',
+  destination: raw.destination || '',
+  zone:       getLocationLabel(raw),
+  coordinate: raw.location_coordinates || '',
+  eta:        raw.eta || '',
+  time:       raw.assigned_date ? `Due ${raw.assigned_date}` : '—',
+  status:     raw.status,
+  completed:  raw.status === 'Done',
+  priority:   raw.priority,
+});
 
 const validateTask = (task) => {
   const missingFields = taskRequirements
@@ -40,38 +55,75 @@ const getPriorityTone = (priority) => {
 };
 
 export function FieldOpsTasksPage() {
-  const [tasks, setTasks] = useState(taskData);
+  const { currentUser } = useAppContext();
+  const staffId = currentUser?.id;
+
+  const fetcher = useCallback(
+    () => (staffId ? api.get(`/api/tasks/assigned/${staffId}`) : Promise.resolve([])),
+    [staffId],
+  );
+  const { data: rawTasks, loading, error, refetch } = useApi(fetcher, [staffId]);
+
+  const [optimisticOverrides, setOptimisticOverrides] = useState({});
+
+  const tasks = useMemo(() => {
+    const base = (rawTasks ?? []).map(mapTaskForDisplay);
+    return base.map((t) => ({ ...t, ...(optimisticOverrides[t.task_id] ?? {}) }));
+  }, [rawTasks, optimisticOverrides]);
 
   const validatedTasks = useMemo(() => tasks.map((task) => validateTask(task)), [tasks]);
 
   const summary = useMemo(() => {
-    const valid = validatedTasks.filter((task) => task.isValid).length;
-    const invalid = validatedTasks.length - valid;
-    const completed = validatedTasks.filter((task) => task.completed).length;
-
-    return {
-      total: validatedTasks.length,
-      valid,
-      invalid,
-      completed,
-    };
+    const valid     = validatedTasks.filter((t) => t.isValid).length;
+    const invalid   = validatedTasks.length - valid;
+    const completed = validatedTasks.filter((t) => t.completed).length;
+    return { total: validatedTasks.length, valid, invalid, completed };
   }, [validatedTasks]);
 
-  const toggleTask = (id) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== id) return task;
+  const toggleTask = async (task_id) => {
+    const task = validatedTasks.find((t) => t.task_id === task_id);
+    if (!task) return;
 
-        const validatedTask = validateTask(task);
-        if (!validatedTask.isValid) {
-          window.alert('Task data is incomplete. Please complete destination/objective details first.');
-          return task;
-        }
+    if (!task.isValid) {
+      window.alert('Task data is incomplete. Please complete destination/objective details first.');
+      return;
+    }
 
-        return { ...task, completed: !task.completed };
-      }),
-    );
+    const newStatus = task.completed ? 'In Progress' : 'Done';
+
+    // Optimistic UI update
+    setOptimisticOverrides((prev) => ({
+      ...prev,
+      [task_id]: { status: newStatus, completed: newStatus === 'Done' },
+    }));
+
+    try {
+      await api.put(`/api/tasks/${task_id}`, { status: newStatus });
+      await refetch();
+    } finally {
+      setOptimisticOverrides((prev) => {
+        const next = { ...prev };
+        delete next[task_id];
+        return next;
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <section className="flex flex-col gap-4">
+        <p className="py-8 text-center text-sm text-slate-400">Loading tasks…</p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="flex flex-col gap-4">
+        <p className="py-8 text-center text-sm text-rose-400">Failed to load tasks: {error}</p>
+      </section>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -101,11 +153,14 @@ export function FieldOpsTasksPage() {
       </div>
 
       <div className="flex flex-col gap-2.5">
-        {validatedTasks.map((task) => (
+        {validatedTasks.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-400">No tasks assigned for today.</p>
+        ) : (
+          validatedTasks.map((task) => (
           <button
-            key={task.id}
+            key={task.task_id}
             type="button"
-            onClick={() => toggleTask(task.id)}
+            onClick={() => toggleTask(task.task_id)}
             className={`w-full text-left bg-[#1e293b] rounded-xl p-4 flex items-start justify-between border transition-colors ${
               task.isValid
                 ? task.completed
@@ -128,15 +183,15 @@ export function FieldOpsTasksPage() {
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-300">
                   <Target size={12} className="text-emerald-300" />
-                  {task.objective}
+                  {task.objective || '—'}
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
                   <MapPin size={12} className="text-sky-300" />
-                  {task.destination} • {task.zone}
+                    {task.zone || '—'} • {task.destination || '—'}
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
                   <Clock3 size={12} className="text-amber-300" />
-                  {task.time} • ETA {task.eta}
+                  {task.time} • ETA {task.eta || '—'}
                 </p>
                 {!task.isValid && (
                   <p className="mt-2 flex items-center gap-1.5 text-[11px] text-rose-300">
@@ -152,7 +207,8 @@ export function FieldOpsTasksPage() {
               {task.priority}
             </span>
           </button>
-        ))}
+          ))
+        )}
       </div>
     </section>
   );

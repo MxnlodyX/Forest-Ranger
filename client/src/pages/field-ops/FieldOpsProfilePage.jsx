@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 // Assuming this is your context path based on the snippet
 import { useAppContext } from '../../context/useAppContext';
+import { api, resolveMediaUrl } from '../../services/api';
 
 // Helper function to extract initials for the avatar
 const getInitials = (name) => {
@@ -18,7 +19,12 @@ export function FieldOpsProfilePage() {
     const navigate = useNavigate();
     const { currentUser, logout } = useAppContext();
 
-    const handleSignOut = () => {
+    const handleSignOut = async () => {
+        try {
+            await api.post('/api/sign_out', {});
+        } catch {
+            // allow local sign-out to continue even when network request fails
+        }
         logout();
         navigate('/signin/fieldops');
     };
@@ -32,12 +38,20 @@ export function FieldOpsProfilePage() {
 
             {/* Profile Header Card */}
             <div className="bg-[#1e293b] border border-slate-700/60 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-xl">
-                <div className="w-20 h-20 rounded-full bg-emerald-500/10 text-emerald-400 border-2 border-emerald-500/20 flex items-center justify-center text-2xl font-bold mb-4 shadow-inner">
-                    {getInitials(currentUser?.name)}
-                </div>
+                {currentUser?.profileImage ? (
+                    <img
+                        src={resolveMediaUrl(currentUser.profileImage)}
+                        alt={currentUser?.name ?? 'Field Ranger'}
+                        className="w-20 h-20 rounded-full object-cover border-2 border-emerald-500/20 mb-4"
+                    />
+                ) : (
+                    <div className="w-20 h-20 rounded-full bg-emerald-500/10 text-emerald-400 border-2 border-emerald-500/20 flex items-center justify-center text-2xl font-bold mb-4 shadow-inner">
+                        {getInitials(currentUser?.name)}
+                    </div>
+                )}
                 <h2 className="text-xl font-bold text-white">{currentUser?.name ?? 'Field Ranger'}</h2>
                 <span className="mt-2 px-3 py-1 bg-sky-500/10 text-sky-400 rounded-full text-xs font-semibold tracking-wide uppercase border border-sky-500/10">
-                    Field Operations
+                    {currentUser?.titleRole ?? 'Field Operations'}
                 </span>
             </div>
 

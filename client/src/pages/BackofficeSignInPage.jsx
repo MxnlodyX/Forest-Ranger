@@ -1,17 +1,50 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/useAppContext';
+import { api } from '../services/api';
 
 export function BackofficeSignInPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
     const { loginAs } = useAppContext();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        loginAs('backoffice', { name: 'Director Marcus', role: 'backoffice' });
-        navigate('/dashboard'); 
+
+        if (!username.trim() || !password) {
+            setErrorMessage('Please enter both username and password.');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            setErrorMessage('');
+
+            const data = await api.post('/api/backoffice-portal/sign_in', {
+                username: username.trim(),
+                password,
+            });
+
+            loginAs('backoffice', {
+                id: data.user.staff_id,
+                username: data.user.username,
+                name: data.user.name,
+                titleRole: data.user.title_role,
+                profileImage: data.user.profile_image,
+                role: 'backoffice',
+                status: data.user.status,
+            }, { remember: rememberMe });
+            navigate('/dashboard');
+        } catch (error) {
+            setErrorMessage(error.message || 'Unable to sign in.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -59,6 +92,9 @@ export function BackofficeSignInPage() {
                             <input
                                 type="text"
                                 placeholder="BOF-XXXX"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                disabled={isSubmitting}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 focus:outline-none focus:border-[#1b4b32] focus:ring-1 focus:ring-[#1b4b32] transition-all placeholder-slate-400"
                             />
                         </div>
@@ -70,6 +106,9 @@ export function BackofficeSignInPage() {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Enter your password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    disabled={isSubmitting}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-4 pr-12 text-sm text-slate-800 focus:outline-none focus:border-[#1b4b32] focus:ring-1 focus:ring-[#1b4b32] transition-all placeholder-slate-400"
                                 />
                                 <button
@@ -102,10 +141,15 @@ export function BackofficeSignInPage() {
                         {/* Submit Button */}
                         <button
                             type="submit"
+                            disabled={isSubmitting}
                             className="mt-4 w-full bg-[#1b4b32] hover:bg-[#153c29] text-white rounded-xl py-3.5 font-semibold text-[15px] transition-all shadow-[0_4px_12px_rgba(27,75,50,0.2)] hover:shadow-[0_6px_16px_rgba(27,75,50,0.3)] active:transform active:scale-[0.99]"
                         >
-                            Click to Sign In
+                            {isSubmitting ? 'Signing in...' : 'Click to Sign In'}
                         </button>
+
+                        {errorMessage && (
+                            <p className="text-sm text-red-600 mt-2" role="alert">{errorMessage}</p>
+                        )}
                     </form>
 
                     {/* Link to Field Ops */}

@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/useAppContext';
 import { api, resolveMediaUrl } from '../../services/api';
 import {
-    LayoutDashboard, Users, Archive, BarChart, Map, LogOut
+    LayoutDashboard, Users, Archive, BarChart, Map, FileText, LogOut
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -15,6 +15,7 @@ export function Sidebar() {
         { path: '/hrm', name: 'Staff Management', icon: Users },
         { path: '/inventory', name: 'Inventory Management', icon: Archive },
         { path: '/taskassignment', name: 'Task Assignment', icon: BarChart },
+        { path: '/report-management', name: 'Report Management', icon: FileText },
         { path: '/areas', name: 'Patrol Areas', icon: Map },
     ];
 

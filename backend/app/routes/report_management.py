@@ -5,6 +5,7 @@ from datetime import date, datetime
 from flask import Blueprint, current_app, jsonify, request, url_for
 from werkzeug.utils import secure_filename
 
+from ..auth import require_auth
 from ..models import get_db_connection
 
 report_bp = Blueprint('report_management', __name__)
@@ -89,6 +90,7 @@ def _fetch_report(cursor, incident_id: int) -> dict | None:
 
 
 @report_bp.route('/api/reports', methods=['GET'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def get_reports():
 	reported_by = request.args.get('reported_by', type=int)
 
@@ -125,11 +127,12 @@ def get_reports():
 
 		conn.close()
 		return jsonify(reports)
-	except Exception as exc:
-		return jsonify({'error': str(exc)}), 500
+	except Exception:
+		return jsonify({'error': 'internal server error'}), 500
 
 
 @report_bp.route('/api/reports/<int:incident_id>', methods=['GET'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def get_report_by_id(incident_id: int):
 	try:
 		conn = get_db_connection()
@@ -140,11 +143,12 @@ def get_report_by_id(incident_id: int):
 		if not report:
 			return jsonify({'error': 'Report not found'}), 404
 		return jsonify(report)
-	except Exception as exc:
-		return jsonify({'error': str(exc)}), 500
+	except Exception:
+		return jsonify({'error': 'internal server error'}), 500
 
 
 @report_bp.route('/api/reports', methods=['POST'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def create_report():
 	payload = request.get_json(silent=True) or {}
 	incident_title = (payload.get('incident_title') or '').strip()
@@ -191,11 +195,12 @@ def create_report():
 			conn.commit()
 		conn.close()
 		return jsonify(report), 201
-	except Exception as exc:
-		return jsonify({'error': str(exc)}), 500
+	except Exception:
+		return jsonify({'error': 'internal server error'}), 500
 
 
 @report_bp.route('/api/reports/<int:incident_id>', methods=['PUT'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def update_report(incident_id: int):
 	payload = request.get_json(silent=True) or {}
 
@@ -262,11 +267,12 @@ def update_report(incident_id: int):
 			conn.commit()
 		conn.close()
 		return jsonify(report)
-	except Exception as exc:
-		return jsonify({'error': str(exc)}), 500
+	except Exception:
+		return jsonify({'error': 'internal server error'}), 500
 
 
 @report_bp.route('/api/reports/<int:incident_id>', methods=['DELETE'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def delete_report(incident_id: int):
 	try:
 		conn = get_db_connection()
@@ -279,11 +285,12 @@ def delete_report(incident_id: int):
 		if deleted_rows == 0:
 			return jsonify({'error': 'Report not found'}), 404
 		return jsonify({'message': 'Report deleted successfully'})
-	except Exception as exc:
-		return jsonify({'error': str(exc)}), 500
+	except Exception:
+		return jsonify({'error': 'internal server error'}), 500
 
 
 @report_bp.route('/api/reports/upload_image', methods=['POST'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def upload_report_image():
 	image_file = request.files.get('image')
 	if not image_file or not image_file.filename:

@@ -1,5 +1,6 @@
 import pymysql
 from flask import Blueprint, jsonify, request
+from ..auth import require_auth
 from ..models import get_db_connection
 
 task_bp = Blueprint('task', __name__)
@@ -46,6 +47,7 @@ _TASK_SELECT = """
 # GET /api/tasks  — all tasks
 # ---------------------------------------------------------------------------
 @task_bp.route('/api/tasks', methods=['GET'])
+@require_auth({'Back-Office'})
 def get_tasks():
     try:
         conn = get_db_connection()
@@ -54,14 +56,15 @@ def get_tasks():
             rows = cursor.fetchall()
         conn.close()
         return jsonify([_serialize_row(r) for r in rows])
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------
 # GET /api/tasks/assigned/<staff_id>  — tasks for a specific ranger
 # ---------------------------------------------------------------------------
 @task_bp.route('/api/tasks/assigned/<int:staff_id>', methods=['GET'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def get_tasks_assigned_to(staff_id):
     try:
         conn = get_db_connection()
@@ -73,14 +76,15 @@ def get_tasks_assigned_to(staff_id):
             rows = cursor.fetchall()
         conn.close()
         return jsonify([_serialize_row(r) for r in rows])
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------
 # POST /api/tasks  — create task
 # ---------------------------------------------------------------------------
 @task_bp.route('/api/tasks', methods=['POST'])
+@require_auth({'Back-Office'})
 def create_task():
     payload = request.get_json(silent=True) or {}
     task_title = (payload.get('task_title') or '').strip()
@@ -121,14 +125,15 @@ def create_task():
             task = cursor.fetchone()
         conn.close()
         return jsonify(_serialize_row(task)), 201
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------
 # PUT /api/tasks/<task_id>  — update task
 # ---------------------------------------------------------------------------
 @task_bp.route('/api/tasks/<int:task_id>', methods=['PUT'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def update_task(task_id):
     payload = request.get_json(silent=True) or {}
 
@@ -170,14 +175,15 @@ def update_task(task_id):
             task = cursor.fetchone()
         conn.close()
         return jsonify(_serialize_row(task))
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------
 # DELETE /api/tasks/<task_id>  — delete task
 # ---------------------------------------------------------------------------
 @task_bp.route('/api/tasks/<int:task_id>', methods=['DELETE'])
+@require_auth({'Back-Office'})
 def delete_task(task_id):
     try:
         conn = get_db_connection()
@@ -189,14 +195,15 @@ def delete_task(task_id):
                 return jsonify({"error": "Task not found"}), 404
         conn.close()
         return jsonify({"message": "Task deleted successfully"})
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------
 # GET /api/locations  — all locations (used by front-end dropdown)
 # ---------------------------------------------------------------------------
 @task_bp.route('/api/locations', methods=['GET'])
+@require_auth({'Back-Office', 'Field-Ops'})
 def get_locations():
     try:
         conn = get_db_connection()
@@ -212,5 +219,5 @@ def get_locations():
             rows = cursor.fetchall()
         conn.close()
         return jsonify([_serialize_row(r) for r in rows])
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500

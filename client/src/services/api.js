@@ -13,6 +13,7 @@ async function request(endpoint, options = {}) {
   const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
 
   const res = await fetch(`${BASE_URL}${endpoint}`, {
+    credentials: 'include',
     headers: { ...defaultHeaders, ...options.headers },
     ...options,
   });

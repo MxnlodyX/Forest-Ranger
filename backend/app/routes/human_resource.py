@@ -3,6 +3,7 @@ import os
 import uuid
 from flask import Blueprint, jsonify, request, current_app, url_for
 from werkzeug.utils import secure_filename
+from ..auth import require_auth
 from ..models import get_db_connection
 
 hr_bp = Blueprint('human_resource', __name__)
@@ -15,6 +16,7 @@ def _is_allowed_image(filename: str) -> bool:
 
 
 @hr_bp.route('/api/staff', methods=['GET'])
+@require_auth({'Back-Office'})
 def get_staff_list():
     try:
         conn = get_db_connection()
@@ -37,11 +39,12 @@ def get_staff_list():
             staff_list = cursor.fetchall()
         conn.close()
         return jsonify(staff_list)
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 
 @hr_bp.route('/api/add_new_staff', methods=['POST'])
+@require_auth({'Back-Office'})
 def add_new_staff():
     payload = request.get_json(silent=True) or {}
     username = (payload.get('username') or '').strip()
@@ -91,12 +94,13 @@ def add_new_staff():
         conn.close()
     except pymysql.err.IntegrityError:
         return jsonify({"error": "username already exists"}), 409
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
     return jsonify({"message": "New staff added successfully!", "staff": created_staff}), 201
 
 @hr_bp.route('/api/edit_staff', methods=['POST'])
+@require_auth({'Back-Office'})
 def edit_staff():
     payload = request.get_json(silent=True) or {}
     staff_id = payload.get('staff_id')
@@ -154,12 +158,13 @@ def edit_staff():
         conn.close()
     except pymysql.err.IntegrityError:
         return jsonify({"error": "username already exists"}), 409
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
     return jsonify({"message": "Staff updated successfully!", "staff": updated_staff}), 200
 
 @hr_bp.route('/api/upload_profile_image', methods=['POST'])
+@require_auth({'Back-Office'})
 def upload_profile_image():
     file = request.files.get('image')
     if not file or not file.filename:
@@ -182,6 +187,7 @@ def upload_profile_image():
 
 
 @hr_bp.route('/api/delete_staff/<int:staff_id>', methods=['DELETE'])
+@require_auth({'Back-Office'})
 def delete_staff(staff_id: int):
     try:
         conn = get_db_connection()
@@ -195,5 +201,5 @@ def delete_staff(staff_id: int):
             return jsonify({"error": "staff not found"}), 404
 
         return jsonify({"message": "Staff deleted successfully!"}), 200
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500

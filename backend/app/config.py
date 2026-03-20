@@ -26,7 +26,7 @@ class BaseConfig:
     SESSION_COOKIE_HTTPONLY: bool = True
     SESSION_COOKIE_SECURE: bool = _env_flag('SESSION_COOKIE_SECURE', False)
     SESSION_COOKIE_SAMESITE: str = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
-    CORS_ALLOWED_ORIGINS: list[str] = _env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')
+    CORS_ALLOWED_ORIGINS: list[str] = _env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
     CORS_SUPPORTS_CREDENTIALS: bool = True
     TESTING:     bool = False
 

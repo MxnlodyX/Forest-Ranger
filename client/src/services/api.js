@@ -9,8 +9,9 @@ export function resolveMediaUrl(path) {
 }
 
 async function request(endpoint, options = {}) {
-  const isFormData = options.body instanceof FormData;
-  const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
+  const hasBody = options.body !== undefined && options.body !== null;
+  const isFormData = hasBody && options.body instanceof FormData;
+  const defaultHeaders = hasBody && !isFormData ? { 'Content-Type': 'application/json' } : {};
 
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     credentials: 'include',

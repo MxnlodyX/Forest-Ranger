@@ -49,12 +49,12 @@ def add_new_staff():
     payload = request.get_json(silent=True) or {}
     username = (payload.get('username') or '').strip()
     password = payload.get('password')
-    full_name = (payload.get('full_name') or '').strip()
-    contact_number = (payload.get('contact_number') or '').strip()
-    title_role = (payload.get('title_role') or '').strip()
-    staff_role = (payload.get('staff_role') or '').strip()
+    full_name = (payload.get('full_name') or payload.get('name') or '').strip()
+    contact_number = (payload.get('contact_number') or payload.get('contact') or '').strip()
+    title_role = (payload.get('title_role') or payload.get('title') or '').strip()
+    staff_role = (payload.get('staff_role') or payload.get('role') or '').strip()
     status = (payload.get('status') or '').strip()
-    profile_image = payload.get('profile_image')
+    profile_image = payload.get('profile_image') or payload.get('image')
 
     if not all([username, password, full_name, contact_number, title_role, staff_role, status]):
         return jsonify({"error": "username, password, full_name, contact_number, title_role, staff_role, status are required"}), 400
@@ -99,41 +99,62 @@ def add_new_staff():
 
     return jsonify({"message": "New staff added successfully!", "staff": created_staff}), 201
 
-@hr_bp.route('/api/edit_staff', methods=['POST'])
+@hr_bp.route('/api/edit_staff', methods=['PUT'])
 @require_auth({'Back-Office'})
-def edit_staff():
+def edit_staff(staff_id: int | None = None):
     payload = request.get_json(silent=True) or {}
-    staff_id = payload.get('staff_id')
+    staff_id = payload.get('staff_id') or staff_id
     username = (payload.get('username') or '').strip()
     password = (payload.get('password') or '').strip()
-    full_name = (payload.get('full_name') or '').strip()
-    contact_number = (payload.get('contact_number') or '').strip()
-    title_role = (payload.get('title_role') or '').strip()
-    staff_role = (payload.get('staff_role') or '').strip()
+    full_name = (payload.get('full_name') or payload.get('name') or '').strip()
+    contact_number = (payload.get('contact_number') or payload.get('contact') or '').strip()
+    title_role = (payload.get('title_role') or payload.get('title') or '').strip()
+    staff_role = (payload.get('staff_role') or payload.get('role') or '').strip()
     status = (payload.get('status') or '').strip()
-    profile_image = payload.get('profile_image')
+    profile_image = payload.get('profile_image') or payload.get('image')
 
-    if not all([staff_id, username, password, full_name, contact_number, title_role, staff_role, status]):
-        return jsonify({"error": "staff_id, username, password, full_name, contact_number, title_role, staff_role, status are required"}), 400
+    if not all([staff_id, username, full_name, contact_number, title_role, staff_role, status]):
+        return jsonify({"error": "staff_id, username, full_name, contact_number, title_role, staff_role, status are required"}), 400
 
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE staff
-                SET username = %s,
-                    pwd = %s,
-                    full_name = %s,
-                    contact_number = %s,
-                    title_role = %s,
-                    staff_role = %s,
-                    status = %s,
-                    profile_image = %s
-                WHERE staff_id = %s
-                """,
-                (username, password, full_name, contact_number, title_role, staff_role, status, profile_image, staff_id),
-            )
+            if password:
+                cursor.execute(
+                    """
+                    UPDATE staff
+                    SET username = %s,
+                        pwd = %s,
+                        full_name = %s,
+                        contact_number = %s,
+                        title_role = %s,
+                        staff_role = %s,
+                        status = %s,
+                        profile_image = %s
+                    WHERE staff_id = %s
+                    """,
+                    (username, password, full_name, contact_number, title_role, staff_role, status, profile_image, staff_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE staff
+                    SET username = %s,
+                        full_name = %s,
+                        contact_number = %s,
+                        title_role = %s,
+                        staff_role = %s,
+                        status = %s,
+                        profile_image = %s
+                    WHERE staff_id = %s
+                    """,
+                    (username, full_name, contact_number, title_role, staff_role, status, profile_image, staff_id),
+                )
+
+            if cursor.rowcount == 0:
+                conn.commit()
+                conn.close()
+                return jsonify({"error": "staff not found"}), 404
 
             cursor.execute(
                 """

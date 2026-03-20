@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, X, Edit2, Trash2, Eye, CheckCircle, Camera } from 'lucide-react';
+import { Search, Plus, X, Edit2, Trash2, Eye, CheckCircle, Camera, Users, UserCheck, UserX, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
+import { Button } from '../../components/ui';
 
 // Helper สำหรับแสดงรูปภาพ (ถ้าเป็น URL จาก Backend ให้เติม Base URL)
 const getImageUrl = (path) => {
@@ -13,6 +14,8 @@ const getImageUrl = (path) => {
 export function HRMDashboard() {
     const [staffList, setStaffList] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedStaffId, setSelectedStaffId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -30,10 +33,26 @@ export function HRMDashboard() {
     // ดึงข้อมูลพนักงาน
     const fetchStaff = async () => {
         try {
+            setIsLoading(true);
             const data = await api.get('/api/staff');
-            setStaffList(Array.isArray(data) ? data : []);
+            const normalizedStaff = Array.isArray(data)
+                ? data.map((staff) => ({
+                    id: staff.staff_id,
+                    username: staff.username,
+                    name: staff.full_name,
+                    contact: staff.contact_number,
+                    title: staff.title_role,
+                    role: staff.staff_role,
+                    area: staff.area || '-',
+                    status: staff.status,
+                    image: staff.profile_image,
+                }))
+                : [];
+            setStaffList(normalizedStaff);
         } catch (error) {
             showToast(error.message || 'Unable to load staff list', 'error');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -96,10 +115,13 @@ export function HRMDashboard() {
             };
 
             if (modalType === 'ADD') {
-                await api.post('/api/staff', payload);
+                await api.post('/api/add_new_staff', payload);
                 showToast('เพิ่มพนักงานสำเร็จ!', 'success');
             } else if (modalType === 'EDIT') {
-                await api.put(`/api/staff/${selectedStaff.id}`, payload);
+                await api.put('/api/edit_staff', {
+                    ...payload,
+                    staff_id: selectedStaff.id,
+                });
                 showToast('อัปเดตข้อมูลพนักงานสำเร็จ!', 'success');
             }
             
@@ -116,7 +138,7 @@ export function HRMDashboard() {
     const handleDelete = async () => {
         try {
             setIsSubmitting(true);
-            await api.delete(`/api/staff/${selectedStaff.id}`);
+            await api.delete(`/api/delete_staff/${selectedStaff.id}`);
             showToast('ลบพนักงานสำเร็จ', 'success');
             fetchStaff();
             closeModal();
@@ -130,10 +152,21 @@ export function HRMDashboard() {
     // ฟิลเตอร์ข้อมูลตาม Search
     const filteredStaff = staffList.filter(s =>
         s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.role?.toLowerCase().includes(searchQuery.toLowerCase())
+        s.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.area?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // จัดการอัปโหลดรูปภาพโดยไม่พึ่ง api.postForm
+    const stats = {
+        total: staffList.length,
+        onDuty: staffList.filter((staff) => staff.status === 'On Duty').length,
+        offDuty: staffList.filter((staff) => staff.status === 'Off Duty').length,
+        backoffice: staffList.filter((staff) => staff.role === 'Backoffice').length,
+    };
+
+    const selectedStaffDetail = staffList.find((staff) => staff.id === selectedStaffId) || null;
+
+    // จัดการอัปโหลดรูปภาพ
     const handleImageChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -156,20 +189,11 @@ export function HRMDashboard() {
             const form = new FormData();
             form.append('image', file);
 
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-            // ใช้ fetch โดยตรงเพื่อส่ง multipart/form-data
-            const res = await fetch(`${baseUrl}/api/upload`, {
-                method: 'POST',
-                body: form,
-            });
-
-            if (!res.ok) throw new Error('Upload failed');
-            const result = await res.json();
+            const result = await api.postForm('/api/upload_profile_image', form);
             
             setFormData((prev) => ({ ...prev, image: result.image_url }));
-            showToast('อัปโหลดรูปภาพสำเร็จ', 'success');
         } catch (error) {
-            showToast('ไม่สามารถอัปโหลดรูปภาพได้', 'error');
+            showToast(error.message || 'ไม่สามารถอัปโหลดรูปภาพได้', 'error');
         } finally {
             setIsUploadingImage(false);
             e.target.value = '';
@@ -178,79 +202,194 @@ export function HRMDashboard() {
 
     return (
         <>
-            <header className="p-8 flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Staff Management (HRM)</h1>
-                    <p className="text-sm text-gray-500 mt-1">จัดการรายชื่อเจ้าหน้าที่ สิทธิ์การใช้งาน และสถานะปัจจุบัน</p>
-                </div>
-            </header>
+            <section className="p-6 md:p-8">
+                <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Staff Management (HRM)</h1>
+                        <p className="mt-1 text-sm text-gray-500">จัดการรายชื่อเจ้าหน้าที่ สิทธิ์การใช้งาน และสถานะปัจจุบัน</p>
+                    </div>
+                    <Button onClick={() => openModal('ADD')} className="gap-2">
+                        <Plus size={16} />
+                        ลงทะเบียนพนักงานใหม่
+                    </Button>
+                </header>
 
-            <div className="px-8 pb-8">
-                {/* Search and Add Staff */}
-                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                    <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-gray-500">
+                            <Users size={16} />
+                            <p className="text-sm font-medium">เจ้าหน้าที่ทั้งหมด</p>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-emerald-600">
+                            <UserCheck size={16} />
+                            <p className="text-sm font-medium">On Duty</p>
+                        </div>
+                        <p className="text-3xl font-bold text-emerald-700">{stats.onDuty}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-gray-600">
+                            <UserX size={16} />
+                            <p className="text-sm font-medium">Off Duty</p>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-700">{stats.offDuty}</p>
+                    </div>
+                    <div className="rounded-xl border border-blue-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-blue-600">
+                            <ShieldCheck size={16} />
+                            <p className="text-sm font-medium">Backoffice</p>
+                        </div>
+                        <p className="text-3xl font-bold text-blue-700">{stats.backoffice}</p>
+                    </div>
+                </div>
+
+                <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Search
+                    </label>
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input
                             type="text"
-                            placeholder="ค้นหาชื่อ, ตำแหน่ง หรือพื้นที่..."
-                            className="w-full bg-white border border-gray-300 rounded-lg py-2 pl-10 pr-4 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-sm"
+                            placeholder="ค้นหาชื่อ, ตำแหน่ง, บทบาท หรือพื้นที่..."
+                            className="h-10 w-full rounded-lg border border-gray-300 py-2 pl-10 pr-20 text-sm text-gray-800 outline-none transition focus:border-blue-500"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                    </div>
-                    <button onClick={() => openModal('ADD')} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 text-sm font-medium transition-all shadow-sm shadow-emerald-600/20">
-                        <Plus size={16} /> <span>ลงทะเบียนพนักงานใหม่</span>
-                    </button>
-                </div>
-
-                {/* Table */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
-                        <h3 className="text-sm font-semibold text-gray-500 w-1/2">ข้อมูลพนักงาน</h3>
-                        <div className="w-1/2 flex justify-between text-sm font-semibold text-gray-500">
-                            <span className="w-1/3 text-center">บทบาท</span>
-                            <span className="w-1/3 text-center">สถานะ</span>
-                            <span className="w-1/3 text-right">จัดการ</span>
-                        </div>
-                    </div>
-
-                    <div className="divide-y divide-gray-200">
-                        {filteredStaff.map(staff => (
-                            <div key={staff.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors group">
-                                <div className="flex items-center space-x-4 w-1/2">
-                                    {staff.image ? (
-                                        <img src={getImageUrl(staff.image)} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-emerald-500/20" />
-                                    ) : (
-                                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold uppercase">
-                                            {staff.name?.charAt(0) || '?'}
-                                        </div>
-                                    )}
-                                    <div>
-                                        <p className="text-gray-900 font-medium">{staff.name}</p>
-                                        <p className="text-xs text-gray-500">{staff.title} • {staff.area}</p>
-                                    </div>
-                                </div>
-                                <div className="w-1/2 flex items-center justify-between">
-                                    <div className="w-1/3 text-sm text-gray-600 text-center">{staff.role}</div>
-                                    <div className="w-1/3 text-center">
-                                        <span className={`px-2 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase ${staff.status === 'On Duty' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                                            {staff.status}
-                                        </span>
-                                    </div>
-                                    <div className="w-1/3 flex justify-end space-x-1 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openModal('VIEW', staff)} className="p-2 hover:bg-blue-100 rounded-lg text-gray-500 hover:text-blue-700 transition-colors" title="ดูข้อมูล"><Eye size={16} /></button>
-                                        <button onClick={() => openModal('EDIT', staff)} className="p-2 hover:bg-amber-100 rounded-lg text-gray-500 hover:text-amber-700 transition-colors" title="แก้ไข"><Edit2 size={16} /></button>
-                                        <button onClick={() => openModal('DELETE', staff)} className="p-2 hover:bg-red-100 rounded-lg text-gray-500 hover:text-red-600 transition-colors" title="ลบ"><Trash2 size={16} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {filteredStaff.length === 0 && (
-                            <div className="p-8 text-center text-gray-500">ไม่พบข้อมูลพนักงาน</div>
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+                            >
+                                Clear
+                            </button>
                         )}
                     </div>
                 </div>
-            </div>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+                    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm xl:col-span-8">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">เจ้าหน้าที่</th>
+                                        <th className="px-4 py-3 font-semibold">บทบาท</th>
+                                        <th className="px-4 py-3 font-semibold">สถานะ</th>
+                                        <th className="px-4 py-3 font-semibold">ติดต่อ</th>
+                                        <th className="px-4 py-3 text-center font-semibold">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {isLoading ? (
+                                        <tr>
+                                            <td className="px-4 py-10 text-center text-gray-400" colSpan={5}>
+                                                กำลังโหลดข้อมูลพนักงาน...
+                                            </td>
+                                        </tr>
+                                    ) : filteredStaff.length === 0 ? (
+                                        <tr>
+                                            <td className="px-4 py-10 text-center text-gray-500" colSpan={5}>
+                                                ไม่พบข้อมูลพนักงาน
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredStaff.map((staff) => (
+                                            <tr
+                                                key={staff.id}
+                                                className={`cursor-pointer transition hover:bg-gray-50 ${selectedStaffId === staff.id ? 'bg-blue-50/60' : 'bg-white'}`}
+                                                onClick={() => setSelectedStaffId(staff.id)}
+                                            >
+                                                <td className="px-4 py-3 align-top">
+                                                    <div className="flex items-center gap-3">
+                                                        {staff.image ? (
+                                                            <img src={getImageUrl(staff.image)} alt="Profile" className="h-10 w-10 rounded-full border-2 border-emerald-500/20 object-cover" />
+                                                        ) : (
+                                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 font-bold uppercase text-emerald-700">
+                                                                {staff.name?.charAt(0) || '?'}
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <p className="font-semibold text-gray-900">{staff.name}</p>
+                                                            <p className="text-xs text-gray-500">{staff.title} • {staff.area}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-700">{staff.role}</td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${staff.status === 'On Duty' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                        {staff.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-700">{staff.contact || '-'}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={(e) => { e.stopPropagation(); openModal('VIEW', staff); }} className="rounded-md p-1.5 text-gray-500 transition hover:bg-blue-100 hover:text-blue-700" title="ดูข้อมูล" type="button"><Eye size={15} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); openModal('EDIT', staff); }} className="rounded-md p-1.5 text-gray-500 transition hover:bg-amber-100 hover:text-amber-700" title="แก้ไข" type="button"><Edit2 size={15} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); openModal('DELETE', staff); }} className="rounded-md p-1.5 text-red-500 transition hover:bg-red-50 hover:text-red-700" title="ลบ" type="button"><Trash2 size={15} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-4">
+                        <h2 className="mb-4 text-lg font-semibold text-gray-900">Person Details</h2>
+                        {!selectedStaffDetail ? (
+                            <p className="text-sm text-gray-500">เลือกพนักงานจากตารางทางซ้ายเพื่อดูรายละเอียด</p>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                    {selectedStaffDetail.image ? (
+                                        <img src={getImageUrl(selectedStaffDetail.image)} alt="Profile" className="h-14 w-14 rounded-full border-2 border-emerald-200 object-cover" />
+                                    ) : (
+                                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-xl font-bold text-emerald-700">
+                                            {selectedStaffDetail.name?.charAt(0) || '?'}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-base font-semibold text-gray-900">{selectedStaffDetail.name}</p>
+                                        <p className="text-sm text-gray-500">{selectedStaffDetail.title || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Staff ID</p>
+                                        <p className="mt-1 text-sm text-gray-800">STF-{selectedStaffDetail.id}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Username</p>
+                                        <p className="mt-1 text-sm text-gray-800">{selectedStaffDetail.username || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Role</p>
+                                        <p className="mt-1 text-sm text-gray-800">{selectedStaffDetail.role || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Contact</p>
+                                        <p className="mt-1 text-sm text-gray-800">{selectedStaffDetail.contact || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</p>
+                                    <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${selectedStaffDetail.status === 'On Duty' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {selectedStaffDetail.status || '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </aside>
+                </div>
+            </section>
 
             {/* --- MODALS --- */}
             {isModalOpen && (
@@ -370,9 +509,9 @@ export function HRMDashboard() {
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <div><p className="text-gray-400 text-xs mb-1">Staff ID</p><p className="font-semibold">STF-{selectedStaff.id}</p></div>
                                         <div><p className="text-gray-400 text-xs mb-1">Username</p><p className="font-semibold">{selectedStaff.username}</p></div>
                                         <div><p className="text-gray-400 text-xs mb-1">Role</p><p className="font-semibold">{selectedStaff.role}</p></div>
-                                        <div><p className="text-gray-400 text-xs mb-1">Area</p><p className="font-semibold">{selectedStaff.area}</p></div>
                                         <div><p className="text-gray-400 text-xs mb-1">Contact</p><p className="font-semibold">{selectedStaff.contact}</p></div>
                                         <div className="col-span-2">
                                             <p className="text-gray-400 text-xs mb-1">Status</p>

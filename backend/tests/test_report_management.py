@@ -7,6 +7,9 @@ from app import create_app
 from app.routes.report_management import _serialize_row
 
 
+pytestmark = [pytest.mark.report]
+
+
 @pytest.fixture
 def client():
     app = create_app("testing")

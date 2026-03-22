@@ -8,6 +8,9 @@ from app import create_app
 from app.routes.human_resource import _is_allowed_image, _normalize_staff_role
 
 
+pytestmark = [pytest.mark.hrm]
+
+
 @pytest.fixture
 def client():
     app = create_app("testing")

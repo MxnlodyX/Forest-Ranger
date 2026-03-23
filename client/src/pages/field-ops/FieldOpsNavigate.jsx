@@ -1,6 +1,6 @@
 // FieldOpsNavigate.jsx
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { CircleMarker, MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -36,15 +36,18 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
     position: [14.4386, 101.3724] 
   };
 
-  // จำลองพิกัดปัจจุบันของผู้ใช้ (ห่างจากจุดหมายนิดหน่อย)
-  const currentLocation = [target.position[0] - 0.005, target.position[1] - 0.005];
-  
-  // จำลองเส้นทาง (Route) จากจุดปัจจุบันไปจุดหมาย (ทำเส้นหักมุมนิดหน่อยให้ดูสมจริง)
-  const routePositions = [
-    currentLocation,
-    [currentLocation[0] + 0.004, currentLocation[1]], // จุดเลี้ยว
-    target.position
-  ];
+  // If a full route is provided (3+ points), use it directly in navigation map.
+  const hasProvidedRoute = Array.isArray(target.routePositions) && target.routePositions.length >= 2;
+  const routePositions = hasProvidedRoute
+    ? target.routePositions
+    : [
+        [target.position[0] - 0.005, target.position[1] - 0.005],
+        [target.position[0] - 0.001, target.position[1] - 0.005],
+        target.position,
+      ];
+
+  const currentLocation = routePositions[0];
+  const finalDestination = routePositions[routePositions.length - 1];
 
   return (
     <div className="fixed inset-0 z-[60] bg-black text-slate-200 font-sans flex flex-col animate-[fadeIn_0.3s_ease-out]">
@@ -73,8 +76,21 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
             className="animate-[dash_20s_linear_infinite]"
           />
 
+          {hasProvidedRoute && routePositions.map((position, index) => (
+            <CircleMarker
+              key={`nav-route-point-${index}`}
+              center={position}
+              radius={5}
+              pathOptions={{ color: '#fca5a5', fillColor: '#ef4444', fillOpacity: 0.9 }}
+            >
+              <Popup>
+                {(target.pointLabels && target.pointLabels[index]) || `Point ${index + 1}`}
+              </Popup>
+            </CircleMarker>
+          ))}
+
           {/* จุดหมายปลายทาง */}
-          <Marker position={target.position} icon={locationMarkerIcon} />
+          <Marker position={finalDestination} icon={locationMarkerIcon} />
           
           {/* ตำแหน่งปัจจุบัน (ตัวเรา) */}
           <Marker position={currentLocation} icon={currentLocationIcon} />

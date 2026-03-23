@@ -3,7 +3,7 @@
 services:
   db:
     ports:
-      - "3306:3306" # เปิด Port ให้เครื่องมืออย่าง DBeaver/DataGrip เข้าถึงได้ตอน Dev
+      - "3307:3306" # เปิด Port ให้เครื่องมืออย่าง DBeaver/DataGrip เข้าถึงได้ตอน Dev
 
   backend:
     volumes:

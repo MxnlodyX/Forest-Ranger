@@ -462,7 +462,15 @@ export function FieldOpsMapPage() {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    {mapPoints.map((point) => (
+                    {mapPoints.map((point) => {
+                        const waypointPositions = gpsPosition ? [gpsPosition, point.position] : [point.position];
+                        const waypointKm = gpsPosition ? distanceKm(waypointPositions) : null;
+                        const waypointEtaMin = waypointKm !== null ? Math.max(1, Math.round((waypointKm / 4.5) * 60)) : null;
+                        const waypointDistDisplay = waypointKm !== null ? `${waypointKm.toFixed(1)} KM` : `${point.distanceKm} KM`;
+                        const waypointEtaDisplay = waypointEtaMin !== null
+                            ? (waypointEtaMin >= 60 ? `${Math.floor(waypointEtaMin / 60)} HR ${waypointEtaMin % 60} MIN` : `${waypointEtaMin} MIN`)
+                            : point.eta;
+                        return (
                         <div
                             key={`list-${point.id}`}
                             onClick={() => setSelectedPointId(point.id)}
@@ -509,11 +517,11 @@ export function FieldOpsMapPage() {
                             <div className="flex gap-2 mt-4 pl-2">
                                 <div className="flex-1 bg-[#111820] rounded-lg px-3 py-2 border border-slate-700/50 flex flex-col justify-center">
                                     <span className="text-[9px] text-slate-500 font-bold tracking-wider">DIST</span>
-                                    <span className="text-slate-200 font-mono text-xs font-bold">{point.distanceKm} KM</span>
+                                    <span className="text-slate-200 font-mono text-xs font-bold">{waypointDistDisplay}</span>
                                 </div>
                                 <div className="flex-1 bg-[#111820] rounded-lg px-3 py-2 border border-slate-700/50 flex flex-col justify-center">
                                     <span className="text-[9px] text-slate-500 font-bold tracking-wider">ETA</span>
-                                    <span className="text-slate-200 font-mono text-xs font-bold">{point.eta}</span>
+                                    <span className="text-slate-200 font-mono text-xs font-bold">{waypointEtaDisplay}</span>
                                 </div>
 
                                 <button
@@ -531,7 +539,8 @@ export function FieldOpsMapPage() {
                                 </button>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <section className="bg-[#1e293b]/80 border border-slate-700/50 rounded-xl p-4 flex flex-col gap-3 mb-6">

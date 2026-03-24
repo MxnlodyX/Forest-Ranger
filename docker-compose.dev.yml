@@ -3,7 +3,7 @@
 services:
   db:
     ports:
-      - "3306:3306" # เปิด Port ให้เครื่องมืออย่าง DBeaver/DataGrip เข้าถึงได้ตอน Dev
+      - "3307:3306" # เปิด Port ให้เครื่องมืออย่าง DBeaver/DataGrip เข้าถึงได้ตอน Dev
 
   backend:
     volumes:
@@ -25,7 +25,7 @@ services:
       - ./client:/app
       - /app/node_modules # ป้องกัน node_modules ในเครื่องไปทับใน Container
     ports:
-      - "5173:5173" # Port เริ่มต้นของ Vite
+      - "443:443" # HTTPS for Geolocation API on mobile
     environment:
       - CHOKIDAR_USEPOLLING=true # Fallback polling สำหรับ Docker บน Windows
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

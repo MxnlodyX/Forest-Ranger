@@ -1,8 +1,24 @@
 // FieldOpsNavigate.jsx
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CircleMarker, MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+function isSamePosition(a, b) {
+  if (!a || !b) return false;
+  return Math.abs(a[0] - b[0]) < 0.0001 && Math.abs(a[1] - b[1]) < 0.0001;
+}
+
+function RecenterNavigation({ position }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!position) return;
+    map.setView(position, map.getZoom(), { animate: true });
+  }, [map, position]);
+
+  return null;
+}
 
 const locationMarkerIcon = L.divIcon({
   html: `
@@ -36,15 +52,59 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
     position: [14.4386, 101.3724] 
   };
 
-  // จำลองพิกัดปัจจุบันของผู้ใช้ (ห่างจากจุดหมายนิดหน่อย)
-  const currentLocation = [target.position[0] - 0.005, target.position[1] - 0.005];
-  
-  // จำลองเส้นทาง (Route) จากจุดปัจจุบันไปจุดหมาย (ทำเส้นหักมุมนิดหน่อยให้ดูสมจริง)
-  const routePositions = [
-    currentLocation,
-    [currentLocation[0] + 0.004, currentLocation[1]], // จุดเลี้ยว
-    target.position
-  ];
+  const [livePosition, setLivePosition] = useState(target.currentPosition || null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return undefined;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLivePosition([position.coords.latitude, position.coords.longitude]);
+      },
+      () => {
+        // Keep the last valid position if GPS update fails.
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 5000,
+      },
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
+  // If a full route is provided (3+ points), use it directly in navigation map.
+  const hasProvidedRoute = Array.isArray(target.routePositions) && target.routePositions.length >= 2;
+  const shouldPrependCurrentToRoute = hasProvidedRoute
+    && Boolean(livePosition || target.currentPosition)
+    && !isSamePosition(livePosition || target.currentPosition, target.routePositions[0]);
+
+  const routePositions = useMemo(() => {
+    const currentPosition = livePosition || target.currentPosition || null;
+
+    if (hasProvidedRoute) {
+      if (shouldPrependCurrentToRoute && currentPosition) {
+        return [currentPosition, ...target.routePositions];
+      }
+      return target.routePositions;
+    }
+
+    if (currentPosition) {
+      return [currentPosition, target.position];
+    }
+
+    return [
+      [target.position[0] - 0.005, target.position[1] - 0.005],
+      [target.position[0] - 0.001, target.position[1] - 0.005],
+      target.position,
+    ];
+  }, [hasProvidedRoute, livePosition, shouldPrependCurrentToRoute, target.currentPosition, target.position, target.routePositions]);
+
+  const currentLocation = routePositions[0];
+  const finalDestination = routePositions[routePositions.length - 1];
 
   return (
     <div className="fixed inset-0 z-[60] bg-black text-slate-200 font-sans flex flex-col animate-[fadeIn_0.3s_ease-out]">
@@ -62,6 +122,7 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
           className="w-full h-full"
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <RecenterNavigation position={currentLocation} />
           
           {/* เส้นทางนำทาง (Route Line) */}
           <Polyline 
@@ -73,8 +134,24 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
             className="animate-[dash_20s_linear_infinite]"
           />
 
+          {hasProvidedRoute && routePositions.map((position, index) => (
+            <CircleMarker
+              key={`nav-route-point-${index}`}
+              center={position}
+              radius={5}
+              pathOptions={{ color: '#fca5a5', fillColor: '#ef4444', fillOpacity: 0.9 }}
+            >
+              <Popup>
+                {shouldPrependCurrentToRoute && index === 0
+                  ? 'Current Position'
+                  : (target.pointLabels && target.pointLabels[shouldPrependCurrentToRoute ? index - 1 : index])
+                    || `Point ${shouldPrependCurrentToRoute ? index : index + 1}`}
+              </Popup>
+            </CircleMarker>
+          ))}
+
           {/* จุดหมายปลายทาง */}
-          <Marker position={target.position} icon={locationMarkerIcon} />
+          <Marker position={finalDestination} icon={locationMarkerIcon} />
           
           {/* ตำแหน่งปัจจุบัน (ตัวเรา) */}
           <Marker position={currentLocation} icon={currentLocationIcon} />

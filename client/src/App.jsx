@@ -8,6 +8,7 @@ import { InventoryPage } from './pages/backoffice/InventoryPage';
 import { PatrolAreasPage } from './pages/backoffice/PatrolAreasPage';
 import { BackofficeSignInPage } from './pages/BackofficeSignInPage';
 import { TaskAssignPage } from './pages/backoffice/TaskAssignPage';
+import { ReportManagementPage } from './pages/backoffice/ReportManagementPage';
 import { FieldOpsHomePage } from './pages/field-ops/FieldOpsHomePage';
 import { FieldOpsLayout } from './pages/field-ops/FieldOpsLayout';
 import { FieldOpsMapPage } from './pages/field-ops/FieldOpsMapPage';
@@ -33,6 +34,7 @@ function App() {
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/areas" element={<PatrolAreasPage />} />
             <Route path="/taskassignment" element={<TaskAssignPage />} />
+            <Route path="/report-management" element={<ReportManagementPage />} />
           </Route>
         </Route>
 

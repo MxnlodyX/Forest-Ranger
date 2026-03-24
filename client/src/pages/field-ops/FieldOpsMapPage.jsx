@@ -6,6 +6,7 @@ import {
     Polyline,
     Popup,
     TileLayer,
+    useMap,
     useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
@@ -14,6 +15,20 @@ import { mapPoints } from './mockData';
 import { FieldOpsNavigate } from './FieldOpsNavigate';
 import { useAppContext } from '../../context/useAppContext';
 import { api } from '../../services/api';
+
+const DEFAULT_MAP_CENTER = [14.4386, 101.3724];
+
+const currentLocationIcon = L.divIcon({
+    html: `
+        <div class="flex items-center justify-center">
+            <div class="w-7 h-7 bg-blue-600 border-2 border-white rounded-full shadow-[0_0_12px_rgba(37,99,235,0.45)]"></div>
+            <div class="absolute w-11 h-11 bg-blue-500/20 rounded-full"></div>
+        </div>
+    `,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+});
 
 function riskTone(level) {
     if (level === 'High') return 'bg-red-500/10 text-red-400 border-red-500/30';
@@ -28,6 +43,17 @@ function RouteClickCapture({ enabled, onAddPoint }) {
             onAddPoint([event.latlng.lat, event.latlng.lng]);
         },
     });
+    return null;
+}
+
+function RecenterOnPosition({ position }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (!position) return;
+        map.setView(position, map.getZoom(), { animate: true });
+    }, [map, position]);
+
     return null;
 }
 
@@ -93,6 +119,9 @@ export function FieldOpsMapPage() {
     const [loadingRoutes, setLoadingRoutes] = useState(false);
     const [routeError, setRouteError] = useState('');
     const [selectedRouteId, setSelectedRouteId] = useState(null);
+    const [gpsPosition, setGpsPosition] = useState(null);
+    const [gpsError, setGpsError] = useState('');
+    const [isGpsReady, setIsGpsReady] = useState(false);
 
     const selectedPoint = useMemo(
         () => mapPoints.find((point) => point.id === selectedPointId) ?? null,
@@ -115,6 +144,7 @@ export function FieldOpsMapPage() {
     );
 
     const draftDistance = useMemo(() => distanceKm(draftPositions), [draftPositions]);
+    const mapCenter = useMemo(() => gpsPosition || DEFAULT_MAP_CENTER, [gpsPosition]);
 
     const loadRoutes = useCallback(async () => {
         if (!staffId) return;
@@ -140,6 +170,34 @@ export function FieldOpsMapPage() {
     useEffect(() => {
         loadRoutes();
     }, [loadRoutes]);
+
+    useEffect(() => {
+        if (!navigator.geolocation) {
+            setGpsError('Geolocation is not supported on this device/browser.');
+            return;
+        }
+
+        const watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                setGpsPosition([position.coords.latitude, position.coords.longitude]);
+                setIsGpsReady(true);
+                setGpsError('');
+            },
+            (error) => {
+                setGpsError(error?.message || 'Unable to read your current location.');
+                setIsGpsReady(false);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 5000,
+            },
+        );
+
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+        };
+    }, []);
 
     const handleMapPointAdd = (position) => {
         setBuilderError('');
@@ -221,6 +279,7 @@ export function FieldOpsMapPage() {
             distance: `${point.distanceKm} KM`,
             eta: point.eta,
             position: point.position,
+            currentPosition: gpsPosition,
         });
         setIsNavigating(true);
     };
@@ -239,6 +298,7 @@ export function FieldOpsMapPage() {
             position: destination,
             routePositions: selectedRoutePositions,
             pointLabels,
+            currentPosition: gpsPosition,
         });
         setIsNavigating(true);
     };
@@ -260,6 +320,9 @@ export function FieldOpsMapPage() {
                     <div>
                         <h1 className="text-2xl font-bold text-white">Active Field Ops</h1>
                         <p className="text-sm text-slate-400 mt-1">Create patrol routes by tapping the map, then save for reuse.</p>
+                        <p className={`text-xs mt-2 ${isGpsReady ? 'text-emerald-400' : 'text-amber-300'}`}>
+                            {isGpsReady ? 'Live GPS connected.' : gpsError || 'Waiting for GPS permission...'}
+                        </p>
                     </div>
                     <button
                         onClick={() => setIsBuilderOpen((prev) => !prev)}
@@ -270,8 +333,16 @@ export function FieldOpsMapPage() {
                 </div>
 
                 <div className="h-64 overflow-hidden rounded-2xl border border-slate-700/60">
-                    <MapContainer center={[14.4386, 101.3724]} zoom={12} className="w-full h-full" scrollWheelZoom>
+                    <MapContainer center={mapCenter} zoom={12} className="w-full h-full" scrollWheelZoom>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+                        {gpsPosition && (
+                            <Marker position={gpsPosition} icon={currentLocationIcon}>
+                                <Popup>Your live location</Popup>
+                            </Marker>
+                        )}
+
+                        {gpsPosition && <RecenterOnPosition position={gpsPosition} />}
 
                         {mapPoints.map((point) => (
                             <Marker

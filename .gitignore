@@ -11,8 +11,8 @@ venv/
 htmlcov/
 
 # ===== Environment =====
-
-.env.example
+.env
+!.env.example
 
 # ===== Node =====
 node_modules/
@@ -33,6 +33,3 @@ npm-debug.log*
 *.pid
 
 reports
-
-# .gitignore
-.env

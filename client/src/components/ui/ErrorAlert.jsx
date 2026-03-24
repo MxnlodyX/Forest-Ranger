@@ -1,4 +1,4 @@
-export function ErrorAlert({ title = 'เกิดข้อผิดพลาด', message, onRetry }) {
+export function ErrorAlert({ title = 'An error occurred', message, onRetry }) {
   return (
     <div
       role="alert"
@@ -11,7 +11,7 @@ export function ErrorAlert({ title = 'เกิดข้อผิดพลาด
           onClick={onRetry}
           className="mt-2 text-sm text-red-700 underline hover:no-underline focus-visible:outline-none"
         >
-          ลองใหม่อีกครั้ง
+          Try again
         </button>
       )}
     </div>

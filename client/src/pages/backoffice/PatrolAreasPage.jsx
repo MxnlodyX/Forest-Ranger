@@ -218,7 +218,7 @@ export function PatrolAreasPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Patrol Areas</h1>
           <p className="mt-1 text-sm text-gray-500">
-            จัดการจุด Location ในป่า ว่าจุดไหนอยู่ตรงไหน และจุดนั้นคืออะไร
+            Manage forest location points, including where they are and what each point represents.
           </p>
         </div>
         <Button onClick={openCreateForm} className="gap-2">
@@ -264,7 +264,7 @@ export function PatrolAreasPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="ค้นหาจากชื่อจุด, รหัส, sector หรือประเภท"
+                placeholder="Search by point name, ID, sector, or type"
                 className="h-10 w-full rounded-lg border border-gray-300 py-2 pl-10 pr-10 text-sm text-gray-800 outline-none transition focus:border-blue-500"
               />
               {query && (
@@ -337,7 +337,7 @@ export function PatrolAreasPage() {
                 {filteredLocations.length === 0 ? (
                   <tr>
                     <td className="px-4 py-10 text-center text-gray-500" colSpan={5}>
-                      ยังไม่พบ Location ที่ตรงกับเงื่อนไขค้นหา
+                      No locations match your search criteria.
                     </td>
                   </tr>
                 ) : (
@@ -398,7 +398,7 @@ export function PatrolAreasPage() {
         <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-4">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Location Details</h2>
           {!selectedLocation ? (
-            <p className="text-sm text-gray-500">เลือก Location จากตารางเพื่อดูรายละเอียด</p>
+            <p className="text-sm text-gray-500">Select a location from the table to view details.</p>
           ) : (
             <div className="space-y-4">
               <div>
@@ -477,7 +477,7 @@ export function PatrolAreasPage() {
                 {editingLocationId ? 'Update Location Point' : 'Create Location Point'}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                ระบุว่า location จุดนี้คืออะไร อยู่ sector ไหน และพิกัดอะไร
+                Specify what this location is, which sector it belongs to, and its coordinates.
               </p>
             </div>
 
@@ -579,7 +579,7 @@ export function PatrolAreasPage() {
                   </MapContainer>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
-                  Tip: ลากหมุดเพื่อระบุตำแหน่ง หรือพิมพ์พิกัดในรูปแบบ lat, lng ได้
+                  Tip: Drag the marker to set the location, or enter coordinates in lat, lng format.
                 </p>
               </div>
 
@@ -590,7 +590,7 @@ export function PatrolAreasPage() {
                   value={formData.description}
                   onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
-                  placeholder="รายละเอียดของจุดนี้ เช่น ข้อควรระวัง หรือวัตถุประสงค์ของจุด"
+                  placeholder="Describe this point, such as cautions or operational purpose"
                 />
               </div>
 

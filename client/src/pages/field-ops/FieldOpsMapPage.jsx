@@ -276,8 +276,6 @@ export function FieldOpsMapPage() {
     const openWaypointNavigation = (point) => {
         setNavigationTarget({
             name: point.name,
-            distance: `${point.distanceKm} KM`,
-            eta: point.eta,
             position: point.position,
             currentPosition: gpsPosition,
         });
@@ -287,14 +285,10 @@ export function FieldOpsMapPage() {
     const openRouteNavigation = () => {
         if (!selectedRoute || selectedRoutePositions.length < 2) return;
         const destination = selectedRoutePositions[selectedRoutePositions.length - 1];
-        const km = distanceKm(selectedRoutePositions);
-        const minutes = selectedRoute.estimated_minutes || Math.max(5, Math.round((km / 4.5) * 60));
         const pointLabels = (selectedRoute.points || []).map((point, index) => point.label || `Point ${index + 1}`);
 
         setNavigationTarget({
             name: selectedRoute.route_name,
-            distance: `${km.toFixed(1)} KM`,
-            eta: `${minutes} MIN`,
             position: destination,
             routePositions: selectedRoutePositions,
             pointLabels,

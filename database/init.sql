@@ -66,6 +66,40 @@ CREATE TABLE IF NOT EXISTS task (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS patrol_route (
+    route_id INT AUTO_INCREMENT,
+    route_name VARCHAR(255) NOT NULL,
+    created_by INT,
+    status ENUM('Draft', 'Active', 'Archived') DEFAULT 'Draft',
+    distance_km DECIMAL(8,2),
+    estimated_minutes INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (route_id),
+    KEY idx_patrol_route_created_by (created_by),
+    CONSTRAINT fk_patrol_route_created_by
+        FOREIGN KEY (created_by) REFERENCES staff(staff_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS patrol_route_point (
+    point_id INT AUTO_INCREMENT,
+    route_id INT NOT NULL,
+    seq_no INT NOT NULL,
+    lat DECIMAL(10,7) NOT NULL,
+    lng DECIMAL(10,7) NOT NULL,
+    label VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (point_id),
+    UNIQUE KEY uq_route_seq (route_id, seq_no),
+    KEY idx_patrol_route_point_route_id (route_id),
+    CONSTRAINT fk_patrol_route_point_route_id
+        FOREIGN KEY (route_id) REFERENCES patrol_route(route_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS inventory (
     inventory_id INT AUTO_INCREMENT,
     unique_id VARCHAR(255) NOT NULL,

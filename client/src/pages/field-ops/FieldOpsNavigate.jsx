@@ -4,6 +4,54 @@ import { CircleMarker, MapContainer, TileLayer, Marker, Polyline, Popup, useMap 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+function haversineDistanceKm(a, b) {
+  if (!a || !b) return 0;
+
+  const [lat1, lng1] = a;
+  const [lat2, lng2] = b;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * sinLng * sinLng;
+
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function routeDistanceKm(positions) {
+  if (!Array.isArray(positions) || positions.length < 2) return 0;
+
+  let total = 0;
+  for (let i = 1; i < positions.length; i += 1) {
+    total += haversineDistanceKm(positions[i - 1], positions[i]);
+  }
+
+  return total;
+}
+
+function formatDistance(km) {
+  if (km < 1) {
+    return `${Math.max(1, Math.round(km * 1000))} M`;
+  }
+  return `${km.toFixed(1)} KM`;
+}
+
+function formatEta(minutes) {
+  if (minutes < 60) {
+    return `${minutes} MIN`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (remainingMinutes === 0) {
+    return `${hours} HR`;
+  }
+  return `${hours} HR ${remainingMinutes} MIN`;
+}
+
 function isSamePosition(a, b) {
   if (!a || !b) return false;
   return Math.abs(a[0] - b[0]) < 0.0001 && Math.abs(a[1] - b[1]) < 0.0001;
@@ -105,6 +153,14 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
 
   const currentLocation = routePositions[0];
   const finalDestination = routePositions[routePositions.length - 1];
+  const remainingDistanceKm = useMemo(() => routeDistanceKm(routePositions), [routePositions]);
+  const estimatedSpeedKmh = Number(target.speedKmh) > 0 ? Number(target.speedKmh) : 4.5;
+  const estimatedMinutes = useMemo(
+    () => Math.max(1, Math.round((remainingDistanceKm / estimatedSpeedKmh) * 60)),
+    [estimatedSpeedKmh, remainingDistanceKm],
+  );
+  const navigationDistanceLabel = formatDistance(remainingDistanceKm);
+  const navigationEtaLabel = formatEta(estimatedMinutes);
 
   return (
     <div className="fixed inset-0 z-[60] bg-black text-slate-200 font-sans flex flex-col animate-[fadeIn_0.3s_ease-out]">
@@ -185,11 +241,11 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
           {/* Stats Box */}
           <div className="bg-[#111820]/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
             <div>
-              <p className="text-3xl font-black text-emerald-400 font-mono leading-none">{target.eta}</p>
+              <p className="text-3xl font-black text-emerald-400 font-mono leading-none">{navigationEtaLabel}</p>
               <p className="text-xs text-slate-400 font-bold tracking-wide mt-1">ESTIMATED TIME</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black text-white font-mono leading-none">{target.distance}</p>
+              <p className="text-2xl font-black text-white font-mono leading-none">{navigationDistanceLabel}</p>
               <p className="text-xs text-slate-400 font-bold tracking-wide mt-1">REMAINING</p>
             </div>
           </div>

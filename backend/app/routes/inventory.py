@@ -1,10 +1,12 @@
 import pymysql
 from flask import Blueprint, jsonify, request
+from ..auth import require_auth
 from ..models import get_db_connection
 
 inventory_bp = Blueprint('inventory', __name__)
 
 @inventory_bp.route('/api/inventory', methods=['GET'])
+@require_auth({'Back-Office'})
 def get_inventory():
     try:
         conn = get_db_connection()
@@ -27,10 +29,11 @@ def get_inventory():
             items = cursor.fetchall()
         conn.close()
         return jsonify(items)
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 @inventory_bp.route('/api/inventory', methods=['POST'])
+@require_auth({'Back-Office'})
 def add_inventory():
     data = request.get_json(silent=True) or {}
     try:
@@ -49,10 +52,11 @@ def add_inventory():
         return jsonify({"message": "Item added successfully!"}), 201
     except pymysql.err.IntegrityError:
         return jsonify({"error": "รหัสอุปกรณ์นี้ (Unique ID) มีอยู่ในระบบแล้ว"}), 409
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 @inventory_bp.route('/api/inventory/<int:item_id>', methods=['PUT'])
+@require_auth({'Back-Office'})
 def update_inventory(item_id):
     data = request.get_json(silent=True) or {}
     try:
@@ -72,10 +76,11 @@ def update_inventory(item_id):
         return jsonify({"message": "Item updated successfully!"}), 200
     except pymysql.err.IntegrityError:
         return jsonify({"error": "รหัสอุปกรณ์นี้ (Unique ID) มีอยู่ในระบบแล้ว"}), 409
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 @inventory_bp.route('/api/inventory/<int:item_id>', methods=['DELETE'])
+@require_auth({'Back-Office'})
 def delete_inventory(item_id):
     try:
         conn = get_db_connection()
@@ -84,5 +89,5 @@ def delete_inventory(item_id):
         conn.commit()
         conn.close()
         return jsonify({"message": "Item deleted successfully!"}), 200
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500

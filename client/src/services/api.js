@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export function resolveMediaUrl(path) {
   if (!path) return '';
@@ -9,10 +9,12 @@ export function resolveMediaUrl(path) {
 }
 
 async function request(endpoint, options = {}) {
-  const isFormData = options.body instanceof FormData;
-  const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
+  const hasBody = options.body !== undefined && options.body !== null;
+  const isFormData = hasBody && options.body instanceof FormData;
+  const defaultHeaders = hasBody && !isFormData ? { 'Content-Type': 'application/json' } : {};
 
   const res = await fetch(`${BASE_URL}${endpoint}`, {
+    credentials: 'include',
     headers: { ...defaultHeaders, ...options.headers },
     ...options,
   });

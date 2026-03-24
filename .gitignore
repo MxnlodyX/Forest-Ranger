@@ -30,3 +30,8 @@ npm-debug.log*
 
 # ===== Docker =====
 *.pid
+
+reports
+
+.env
+.env.example

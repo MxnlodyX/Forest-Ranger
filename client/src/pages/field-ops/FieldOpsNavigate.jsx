@@ -4,6 +4,20 @@ import { CircleMarker, MapContainer, TileLayer, Marker, Polyline, Popup, useMap 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+function distanceKm(positions) {
+  if (!Array.isArray(positions) || positions.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < positions.length; i++) {
+    const [lat1, lng1] = positions[i - 1];
+    const [lat2, lng2] = positions[i];
+    const latDiff = (lat2 - lat1) * 111.32;
+    const lngScale = Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
+    const lngDiff = (lng2 - lng1) * 111.32 * lngScale;
+    total += Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+  }
+  return total;
+}
+
 function isSamePosition(a, b) {
   if (!a || !b) return false;
   return Math.abs(a[0] - b[0]) < 0.0001 && Math.abs(a[1] - b[1]) < 0.0001;
@@ -106,6 +120,13 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
   const currentLocation = routePositions[0];
   const finalDestination = routePositions[routePositions.length - 1];
 
+  const remainingKm = distanceKm(routePositions);
+  const etaMinutes = Math.max(1, Math.round((remainingKm / 4.5) * 60));
+  const distanceDisplay = `${remainingKm.toFixed(1)} KM`;
+  const etaDisplay = etaMinutes >= 60
+    ? `${Math.floor(etaMinutes / 60)} HR ${etaMinutes % 60} MIN`
+    : `${etaMinutes} MIN`;
+
   return (
     <div className="fixed inset-0 z-[60] bg-black text-slate-200 font-sans flex flex-col animate-[fadeIn_0.3s_ease-out]">
       <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
@@ -185,11 +206,11 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
           {/* Stats Box */}
           <div className="bg-[#111820]/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
             <div>
-              <p className="text-3xl font-black text-emerald-400 font-mono leading-none">{target.eta}</p>
+              <p className="text-3xl font-black text-emerald-400 font-mono leading-none">{etaDisplay}</p>
               <p className="text-xs text-slate-400 font-bold tracking-wide mt-1">ESTIMATED TIME</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black text-white font-mono leading-none">{target.distance}</p>
+              <p className="text-2xl font-black text-white font-mono leading-none">{distanceDisplay}</p>
               <p className="text-xs text-slate-400 font-bold tracking-wide mt-1">REMAINING</p>
             </div>
           </div>

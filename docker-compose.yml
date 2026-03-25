@@ -16,6 +16,8 @@ services:
       context: ./backend
     restart: always
     env_file: .env
+    volumes:
+      - uploads_data:/app/app/static/uploads
     depends_on:
       - db
     networks:
@@ -36,3 +38,4 @@ networks:
 
 volumes:
   db_data:
+  uploads_data:

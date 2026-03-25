@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 /**
  * Generic data-fetching hook.
@@ -9,8 +9,8 @@ export function useApi(fetcher, deps = []) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const depsKey = useMemo(() => JSON.stringify(deps), [deps]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const execute = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -22,9 +22,11 @@ export function useApi(fetcher, deps = []) {
     } finally {
       setLoading(false);
     }
-  }, deps);
+  }, [fetcher]);
 
-  useEffect(() => { execute(); }, [execute]);
+  useEffect(() => {
+    execute();
+  }, [execute, depsKey]);
 
   return { data, loading, error, refetch: execute };
 }

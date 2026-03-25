@@ -123,7 +123,7 @@ export function FieldOpsSignInPage() {
                         </div>
                     </div>
 
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-300/80 text-xs font-mono tracking-wide uppercase">
+                    {/* <label className="flex items-center gap-2 cursor-pointer text-emerald-300/80 text-xs font-mono tracking-wide uppercase">
                         <input
                             type="checkbox"
                             className="accent-emerald-500"
@@ -132,7 +132,7 @@ export function FieldOpsSignInPage() {
                             disabled={isSubmitting}
                         />
                         Remember session on this device
-                    </label>
+                    </label> */}
 
                     {/* Submit Button */}
                     <button

@@ -84,7 +84,7 @@ export const mapPoints = [
     eta: '45 MIN',
     position: [14.4386, 101.3724], // พิกัดโซนเขาใหญ่
     coordinates: '14.4386° N, 101.3724° E',
-    notes: 'จุดพักยามประจำทิศเหนือ มีชุดปฐมพยาบาลและวิทยุสื่อสารสำรอง'
+    notes: 'North-side guard rest point with first-aid kits and backup radios.'
   },
   {
     id: 'pt-02',
@@ -96,7 +96,7 @@ export const mapPoints = [
     eta: '1 HR 20 MIN',
     position: [14.4453, 101.3810], // พิกัดโซนเขาใหญ่
     coordinates: '14.4453° N, 101.3810° E',
-    notes: 'แหล่งน้ำธรรมชาติ ตรวจพบร่องรอยสัตว์ป่าสงวนเมื่อ 2 วันก่อน'
+    notes: 'Natural water source; signs of protected wildlife were observed two days ago.'
   },
   {
     id: 'pt-03',
@@ -108,6 +108,6 @@ export const mapPoints = [
     eta: '2 HR 45 MIN',
     position: [14.4291, 101.3619], // พิกัดโซนเขาใหญ่
     coordinates: '14.4291° N, 101.3619° E',
-    notes: 'พื้นที่ดินถล่มจากพายุสัปดาห์ก่อน ห้ามเข้าใกล้ขอบหน้าผาเด็ดขาด'
+    notes: 'Recent landslide area from last week\'s storm; avoid cliff edges at all times.'
   }
 ];

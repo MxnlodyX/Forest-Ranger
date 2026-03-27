@@ -12,7 +12,7 @@ export function UsersPage() {
           Users
         </h1>
 
-        {loading && <LoadingSpinner message="กำลังโหลดข้อมูล..." />}
+        {loading && <LoadingSpinner message="Loading data..." />}
 
         {error && <ErrorAlert message={error} onRetry={refetch} />}
 

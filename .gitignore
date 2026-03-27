@@ -11,6 +11,7 @@ venv/
 htmlcov/
 
 # ===== Environment =====
+.env
 !.env.example
 
 # ===== Node =====
@@ -32,6 +33,3 @@ npm-debug.log*
 *.pid
 
 reports
-
-.env
-.env.example

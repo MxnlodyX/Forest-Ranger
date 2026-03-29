@@ -5,7 +5,7 @@ import { api } from '../services/api';
 
 export function FieldOpsSignInPage() {
     const [showPassword, setShowPassword] = useState(false);
-    const [rememberMe, setRememberMe] = useState(false);
+    const [rememberMe, _] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
@@ -73,7 +73,7 @@ export function FieldOpsSignInPage() {
                             </svg>
                         </div>
                     </div>
-                    
+
                     <h1 className="text-3xl font-black mb-1 tracking-widest text-emerald-50 uppercase">Forest-Shield </h1>
                     <div className="flex items-center gap-2 text-emerald-500 font-mono text-xs tracking-[0.2em] bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-800/50">
                         <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>

@@ -15,6 +15,14 @@ ROLE_ALIASES = {
     'fieldops': 'Field-Ops',
     'field-ops': 'Field-Ops',
 }
+STATUS_ALIASES = {
+    'off duty': 'Off Duty',
+    'off-duty': 'Off Duty',
+    'on duty': 'On Duty',
+    'on-duty': 'On Duty',
+    'active': 'Active',
+}
+ALLOWED_STAFF_STATUSES = {'Off Duty', 'On Duty', 'Active'}
 
 
 def _is_allowed_image(filename: str) -> bool:
@@ -26,6 +34,50 @@ def _normalize_staff_role(role: str | None) -> str:
     if not normalized:
         return ''
     return ROLE_ALIASES.get(normalized.lower(), normalized)
+
+
+def _normalize_staff_status(status: str | None) -> str:
+    normalized = (status or '').strip()
+    if not normalized:
+        return ''
+    return STATUS_ALIASES.get(normalized.lower(), normalized)
+
+
+def _parse_enum_values(enum_type: str | None) -> set[str]:
+    if not enum_type:
+        return set()
+    raw = enum_type.strip()
+    if not raw.startswith('enum(') or not raw.endswith(')'):
+        return set()
+    body = raw[5:-1]
+    values = set()
+    for part in body.split(','):
+        cleaned = part.strip().strip("'").strip('"')
+        if cleaned:
+            values.add(cleaned)
+    return values
+
+
+def _get_staff_status_enum_values(cursor) -> set[str]:
+    cursor.execute("SHOW COLUMNS FROM staff LIKE 'status'")
+    col = cursor.fetchone() or {}
+    return _parse_enum_values(col.get('Type'))
+
+
+def _status_for_db_write(cursor, requested_status: str) -> str:
+    enum_values = _get_staff_status_enum_values(cursor)
+    if not enum_values:
+        return requested_status
+    if requested_status in enum_values:
+        return requested_status
+    # Backward compatibility for old schema: map Active -> Leave
+    if requested_status == 'Active' and 'Leave' in enum_values:
+        return 'Leave'
+    return requested_status
+
+
+def _status_for_response(raw_status: str | None) -> str:
+    return 'Active' if raw_status == 'Leave' else (raw_status or '')
 
 
 @hr_bp.route('/api/staff', methods=['GET'])
@@ -51,6 +103,8 @@ def get_staff_list():
                 """
             )
             staff_list = cursor.fetchall()
+            for row in staff_list:
+                row['status'] = _status_for_response(row.get('status'))
         conn.close()
         return jsonify(staff_list)
     except Exception:
@@ -68,21 +122,24 @@ def add_new_staff():
     title_role = (payload.get('title_role') or payload.get('title') or '').strip()
     staff_role = _normalize_staff_role(payload.get('staff_role') or payload.get('role'))
     area = (payload.get('area') or '').strip() or None
-    status = (payload.get('status') or '').strip()
+    status = _normalize_staff_status(payload.get('status'))
     profile_image = payload.get('profile_image') or payload.get('image')
 
     if not all([username, password, full_name, contact_number, title_role, staff_role, status]):
         return jsonify({"error": "username, password, full_name, contact_number, title_role, staff_role, status are required"}), 400
+    if status not in ALLOWED_STAFF_STATUSES:
+        return jsonify({"error": "status must be Off Duty, On Duty, or Active"}), 400
 
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
+            db_status = _status_for_db_write(cursor, status)
             cursor.execute(
                 """
                 INSERT INTO staff (username, pwd, full_name, contact_number, title_role, staff_role, area, status, profile_image)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (username, password, full_name, contact_number, title_role, staff_role, area, status, profile_image),
+                (username, password, full_name, contact_number, title_role, staff_role, area, db_status, profile_image),
             )
             staff_id = cursor.lastrowid
 
@@ -105,11 +162,15 @@ def add_new_staff():
                 (staff_id,),
             )
             created_staff = cursor.fetchone()
+            if created_staff:
+                created_staff['status'] = _status_for_response(created_staff.get('status'))
 
         conn.commit()
         conn.close()
     except pymysql.err.IntegrityError:
         return jsonify({"error": "username already exists"}), 409
+    except pymysql.err.DataError as exc:
+        return jsonify({"error": f"invalid staff data: {exc}"}), 400
     except Exception:
         return jsonify({"error": "internal server error"}), 500
 
@@ -141,15 +202,18 @@ def edit_staff(staff_id: int | None = None):
     title_role = (payload.get('title_role') or payload.get('title') or '').strip()
     staff_role = _normalize_staff_role(payload.get('staff_role') or payload.get('role'))
     area = (payload.get('area') or '').strip() or None
-    status = (payload.get('status') or '').strip()
+    status = _normalize_staff_status(payload.get('status'))
     profile_image = payload.get('profile_image') or payload.get('image')
 
     if not all([staff_id, username, full_name, contact_number, title_role, staff_role, status]):
         return jsonify({"error": "staff_id, username, full_name, contact_number, title_role, staff_role, status are required"}), 400
+    if status not in ALLOWED_STAFF_STATUSES:
+        return jsonify({"error": "status must be Off Duty, On Duty, or Active"}), 400
 
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
+            db_status = _status_for_db_write(cursor, status)
             cursor.execute(
                 """
                 SELECT 1
@@ -179,7 +243,7 @@ def edit_staff(staff_id: int | None = None):
                         profile_image = %s
                     WHERE staff_id = %s
                     """,
-                    (username, password, full_name, contact_number, title_role, staff_role, area, status, profile_image, staff_id),
+                    (username, password, full_name, contact_number, title_role, staff_role, area, db_status, profile_image, staff_id),
                 )
             else:
                 cursor.execute(
@@ -195,7 +259,7 @@ def edit_staff(staff_id: int | None = None):
                         profile_image = %s
                     WHERE staff_id = %s
                     """,
-                    (username, full_name, contact_number, title_role, staff_role, area, status, profile_image, staff_id),
+                    (username, full_name, contact_number, title_role, staff_role, area, db_status, profile_image, staff_id),
                 )
 
             cursor.execute(
@@ -217,11 +281,15 @@ def edit_staff(staff_id: int | None = None):
                 (staff_id,),
             )
             updated_staff = cursor.fetchone()
+            if updated_staff:
+                updated_staff['status'] = _status_for_response(updated_staff.get('status'))
 
         conn.commit()
         conn.close()
     except pymysql.err.IntegrityError:
         return jsonify({"error": "username already exists"}), 409
+    except pymysql.err.DataError as exc:
+        return jsonify({"error": f"invalid staff data: {exc}"}), 400
     except Exception:
         return jsonify({"error": "internal server error"}), 500
 

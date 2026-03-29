@@ -11,10 +11,10 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { mapPoints } from './mockData';
 import { FieldOpsNavigate } from './FieldOpsNavigate';
 import { useAppContext } from '../../context/useAppContext';
 import { api } from '../../services/api';
+import { useApi } from '../../hooks/useApi';
 
 const DEFAULT_MAP_CENTER = [14.4386, 101.3724];
 
@@ -72,6 +72,37 @@ function distanceKm(positions) {
     return total;
 }
 
+function parseCoordinatePair(coordinateText) {
+    if (typeof coordinateText !== 'string') return null;
+    const [latText, lngText] = coordinateText.split(',').map((value) => value.trim());
+    const lat = Number(latText);
+    const lng = Number(lngText);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+
+    return [lat, lng];
+}
+
+function normalizeLocationWaypoint(location, fallbackIndex) {
+    const position = parseCoordinatePair(location?.coordinates);
+    if (!position) return null;
+
+    const rawRisk = String(location?.risk_level || 'Low');
+    const riskLevel = rawRisk === 'High' || rawRisk === 'Medium' ? rawRisk : 'Low';
+
+    return {
+        id: String(location?.location_id ?? `loc-${fallbackIndex}`),
+        name: location?.location_name || `Waypoint ${fallbackIndex + 1}`,
+        type: location?.location_type || 'Waypoint',
+        zone: location?.sector || 'Unassigned Sector',
+        riskLevel,
+        position,
+        distanceKm: null,
+        eta: null,
+    };
+}
+
 const createTacticalMarker = (point, isSelected) => {
     let colorClass = 'bg-emerald-500 border-emerald-200 text-emerald-100';
     if (point.riskLevel === 'High') colorClass = 'bg-red-500 border-red-200 text-red-100';
@@ -105,6 +136,21 @@ export function FieldOpsMapPage() {
     const { currentUser } = useAppContext();
     const staffId = currentUser?.id;
 
+    const fetchWaypoints = useCallback(() => api.get('/api/locations'), []);
+    const {
+        data: waypointData,
+        loading: waypointsLoading,
+        error: waypointsError,
+        refetch: refetchWaypoints,
+    } = useApi(fetchWaypoints);
+
+    const activeWaypoints = useMemo(
+        () => (Array.isArray(waypointData) ? waypointData : [])
+            .map((location, index) => normalizeLocationWaypoint(location, index))
+            .filter(Boolean),
+        [waypointData],
+    );
+
     const [selectedPointId, setSelectedPointId] = useState(null);
     const [isNavigating, setIsNavigating] = useState(false);
     const [navigationTarget, setNavigationTarget] = useState(null);
@@ -124,8 +170,8 @@ export function FieldOpsMapPage() {
     const [isGpsReady, setIsGpsReady] = useState(false);
 
     const selectedPoint = useMemo(
-        () => mapPoints.find((point) => point.id === selectedPointId) ?? null,
-        [selectedPointId],
+        () => activeWaypoints.find((point) => point.id === selectedPointId) ?? null,
+        [activeWaypoints, selectedPointId],
     );
 
     const selectedRoute = useMemo(
@@ -318,12 +364,7 @@ export function FieldOpsMapPage() {
                             {isGpsReady ? 'Live GPS connected.' : gpsError || 'Waiting for GPS permission...'}
                         </p>
                     </div>
-                    <button
-                        onClick={() => setIsBuilderOpen((prev) => !prev)}
-                        className="bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 rounded-lg px-3 py-2 text-xs font-bold tracking-wide"
-                    >
-                        {isBuilderOpen ? 'Close Builder' : '+ New Route'}
-                    </button>
+
                 </div>
 
                 <div className="h-64 overflow-hidden rounded-2xl border border-slate-700/60">
@@ -338,7 +379,7 @@ export function FieldOpsMapPage() {
 
                         {gpsPosition && <RecenterOnPosition position={gpsPosition} />}
 
-                        {mapPoints.map((point) => (
+                        {activeWaypoints.map((point) => (
                             <Marker
                                 key={`map-${point.id}`}
                                 position={point.position}
@@ -457,12 +498,28 @@ export function FieldOpsMapPage() {
                 <div className="flex justify-between items-end">
                     <p className="text-sm text-slate-400 font-medium">Available Waypoints</p>
                     <p className="text-xs text-emerald-500 font-mono font-bold bg-emerald-900/30 px-2 py-1 rounded-md">
-                        {mapPoints.length} DETECTED
+                        {activeWaypoints.length} DETECTED
                     </p>
                 </div>
 
+                {waypointsLoading ? <p className="text-xs text-slate-400">Loading waypoint locations...</p> : null}
+                {waypointsError ? (
+                    <div className="text-xs text-red-300 bg-red-950/30 border border-red-500/40 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                        <span>{waypointsError}</span>
+                        <button
+                            onClick={refetchWaypoints}
+                            className="text-[10px] px-2 py-1 rounded border border-red-400/60 hover:bg-red-500/20"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                ) : null}
+                {!waypointsLoading && !waypointsError && activeWaypoints.length === 0 ? (
+                    <p className="text-xs text-slate-500">No waypoint locations available yet.</p>
+                ) : null}
+
                 <div className="flex flex-col gap-3">
-                    {mapPoints.map((point) => {
+                    {activeWaypoints.map((point) => {
                         const waypointPositions = gpsPosition ? [gpsPosition, point.position] : [point.position];
                         const waypointKm = gpsPosition ? distanceKm(waypointPositions) : null;
                         const waypointEtaMin = waypointKm !== null ? Math.max(1, Math.round((waypointKm / 4.5) * 60)) : null;
@@ -543,88 +600,7 @@ export function FieldOpsMapPage() {
                     })}
                 </div>
 
-                <section className="bg-[#1e293b]/80 border border-slate-700/50 rounded-xl p-4 flex flex-col gap-3 mb-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-white">My Saved Routes</h2>
-                        <button
-                            onClick={loadRoutes}
-                            className="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200"
-                        >
-                            Refresh
-                        </button>
-                    </div>
-
-                    {loadingRoutes ? <p className="text-xs text-slate-400">Loading routes...</p> : null}
-                    {routeError ? <p className="text-xs text-red-400">{routeError}</p> : null}
-
-                    {!loadingRoutes && routes.length === 0 ? (
-                        <p className="text-xs text-slate-400">No saved routes yet. Build one from the map above.</p>
-                    ) : null}
-
-                    <div className="flex flex-col gap-2">
-                        {routes.map((route) => {
-                            const positions = (route.points || []).map((point) => [Number(point.lat), Number(point.lng)]);
-                            const km = distanceKm(positions);
-
-                            return (
-                                <div
-                                    key={route.route_id}
-                                    className={`rounded-lg border p-3 cursor-pointer ${
-                                        selectedRouteId === route.route_id
-                                            ? 'border-sky-500 bg-sky-500/10'
-                                            : 'border-slate-700 bg-[#111820]'
-                                    }`}
-                                    onClick={() => setSelectedRouteId(route.route_id)}
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-100">{route.route_name}</p>
-                                            <p className="text-[11px] text-slate-400">
-                                                {route.points?.length || 0} pts • {km.toFixed(1)} KM • {route.status}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                handleDeleteRoute(route.route_id);
-                                            }}
-                                            className="text-[10px] px-2 py-1 rounded border border-red-500/40 text-red-300 hover:bg-red-500/20"
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <button
-                        onClick={openRouteNavigation}
-                        disabled={!selectedRoute || selectedRoutePositions.length < 2}
-                        className="mt-1 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-[#0f1721] rounded-lg py-2 text-xs font-black uppercase"
-                    >
-                        Navigate Selected Route
-                    </button>
-
-                    {selectedRoute && (selectedRoute.points?.length || 0) > 0 && (
-                        <div className="mt-1 border border-slate-700 rounded-lg bg-[#111820] p-3 flex flex-col gap-2 max-h-56 overflow-y-auto">
-                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wide">Route Points</p>
-                            {selectedRoute.points.map((point, index) => (
-                                <div
-                                    key={`selected-route-point-row-${point.point_id || index}`}
-                                    className="flex items-center justify-between gap-2 border border-slate-800 rounded-md px-2 py-1.5"
-                                >
-                                    <p className="text-xs text-slate-200 font-semibold">
-                                        {index + 1}. {point.label || `Point ${index + 1}`}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400 font-mono">
-                                        {Number(point.lat).toFixed(5)}, {Number(point.lng).toFixed(5)}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                
 
                 {selectedPoint && (
                     <div className="fixed inset-0 z-[40] flex items-end justify-center pointer-events-none">

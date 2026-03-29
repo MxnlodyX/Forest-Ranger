@@ -9,13 +9,22 @@ def get_dashboard_stats():
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            # 1. นับสถิติพนักงาน (On Duty, Off Duty, Leave)
+            # 1. นับสถิติพนักงาน (On Duty, Off Duty, Active)
             cursor.execute("""
                 SELECT status, COUNT(*) as count 
                 FROM staff 
+                WHERE COALESCE(staff_role, '') <> 'Back-Office'
                 GROUP BY status
             """)
             staff_stats_raw = cursor.fetchall()
+
+            cursor.execute("""
+                SELECT staff_id, username, full_name, title_role, status
+                FROM staff
+                WHERE COALESCE(staff_role, '') <> 'Back-Office'
+                ORDER BY full_name ASC
+            """)
+            staff_rows = cursor.fetchall()
             
             # 2. นับสถิติอุปกรณ์ (Available, In Use, Maintenance)
             cursor.execute("""
@@ -30,12 +39,38 @@ def get_dashboard_stats():
         # --- จัดรูปแบบข้อมูลให้ตรงกับที่ Recharts (กราฟ) ต้องการ ---
         
         # จัดรูปแบบพนักงาน (ใช้สีตามสถานะ)
-        # ค่าสถานะจาก SQL: 'On Duty', 'Off Duty', 'Leave'
+        # ค่าสถานะจาก SQL: 'On Duty', 'Off Duty', 'Active'
         staff_data = {item['status']: item['count'] for item in staff_stats_raw}
+        # รองรับข้อมูลเก่าที่อาจยังเป็น Leave ให้ถูกรวมเป็น Active
+        staff_data['Active'] = staff_data.get('Active', 0) + staff_data.get('Leave', 0)
+        status_config = [
+            {"key": "On Duty", "name": "ทำงานอยู่ (On Duty)", "fill": "#10b981"},
+            {"key": "Off Duty", "name": "กำลังว่าง (Off Duty)", "fill": "#6b7280"},
+            {"key": "Active", "name": "พร้อมปฏิบัติงาน (Active)", "fill": "#f59e0b"},
+        ]
+
+        staff_members_by_status = {conf["key"]: [] for conf in status_config}
+        for row in staff_rows:
+            status_key = row.get('status')
+            if status_key == 'Leave':
+                status_key = 'Active'
+            if status_key not in staff_members_by_status:
+                staff_members_by_status[status_key] = []
+            staff_members_by_status[status_key].append({
+                "staffId": row.get('staff_id'),
+                "username": row.get('username'),
+                "fullName": row.get('full_name'),
+                "titleRole": row.get('title_role')
+            })
+
         formatted_staff_chart = [
-            {"name": "ทำงานอยู่ (On Duty)", "value": staff_data.get('On Duty', 0), "fill": "#10b981"}, # สีเขียว Emerald
-            {"name": "กำลังว่าง (Off Duty)", "value": staff_data.get('Off Duty', 0), "fill": "#6b7280"}, # สีเทา
-            {"name": "ลาพัก (Leave)", "value": staff_data.get('Leave', 0), "fill": "#f59e0b"}  # สีส้ม Amber
+            {
+                "status": conf["key"],
+                "name": conf["name"],
+                "value": staff_data.get(conf["key"], 0),
+                "fill": conf["fill"],
+            }
+            for conf in status_config
         ]
 
         # จัดรูปแบบอุปกรณ์ (ใช้สีแดง/น้ำเงิน/เขียว)
@@ -55,7 +90,8 @@ def get_dashboard_stats():
             "onDutyStaff": staff_data.get('On Duty', 0),
             "totalInventory": total_inv,
             "staffChartData": formatted_staff_chart,
-            "inventoryChartData": formatted_inv_chart
+            "inventoryChartData": formatted_inv_chart,
+            "staffMembersByStatus": staff_members_by_status
         })
 
     except Exception as exc:

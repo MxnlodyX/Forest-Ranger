@@ -12,13 +12,20 @@ CREATE TABLE IF NOT EXISTS staff (
     title_role VARCHAR(100),
     staff_role VARCHAR(100) NOT NULL,
     area VARCHAR(100), -- <--- เติมคอลัมน์นี้เข้ามาให้ตรงกับ Frontend
-    status ENUM('Off Duty', 'On Duty', 'Leave') DEFAULT 'Off Duty',
+    status ENUM('Off Duty', 'On Duty', 'Active') DEFAULT 'Off Duty',
     profile_image VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (staff_id),
     UNIQUE KEY uq_staff_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+UPDATE staff
+SET status = 'Active'
+WHERE status = 'Leave';
+
+ALTER TABLE staff
+    MODIFY COLUMN status ENUM('Off Duty', 'On Duty', 'Active') DEFAULT 'Off Duty';
 
 CREATE TABLE IF NOT EXISTS location (
     location_id INT AUTO_INCREMENT,

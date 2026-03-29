@@ -67,7 +67,6 @@ export function BackofficeSignInPage() {
                         </div>
                         <h1 className="text-3xl font-bold mb-2 leading-tight">Forest Shield<br/>Back Office</h1>
                         <p className="text-emerald-100/70 text-sm mt-4 leading-relaxed">
-                            Centralized command center for monitoring ecosystem health, managing field operations, and analyzing spatial data.
                         </p>
                     </div>
 

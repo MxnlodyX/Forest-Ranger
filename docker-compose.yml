@@ -30,6 +30,9 @@ services:
     env_file: .env
     depends_on:
       - db
+    volumes:
+      - ./ai_service:/ai_service           # ดึงโค้ดจากเครื่องเราไปเชื่อมกับใน Container (แก้โค้ดปุ๊บ Server รีสตาร์ทปั๊บ)
+      - /ai_service/node_modules           # ป้องกันไม่ให้ node_modules จากเครื่องเราไปกวนใน Container
     networks:
       - app-network
 

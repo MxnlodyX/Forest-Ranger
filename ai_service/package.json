@@ -13,8 +13,11 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "jimp": "^1.6.0",
+    "multer": "^2.1.1"
   }
 }

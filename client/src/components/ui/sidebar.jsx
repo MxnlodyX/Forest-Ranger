@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/useAppContext';
 import { api, resolveMediaUrl } from '../../services/api';
 import {
-    LayoutDashboard, Users, Archive, BarChart, Map, FileText, LogOut, ScanSearch
+    LayoutDashboard, Users, Archive, BarChart, Map, FileText, LogOut, ScanSearch,
+		Book
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -17,7 +18,8 @@ export function Sidebar() {
         { path: '/taskassignment', name: 'Task Assignment', icon: BarChart },
         { path: '/report-management', name: 'Report Management', icon: FileText },
         { path: '/areas', name: 'Patrol Areas', icon: Map },
-        { path: '/image-classification', name: 'Image Classification', icon: ScanSearch },
+			{ path: '/image-classification', name: 'Image Classification', icon: ScanSearch },
+        { path: '/knowledge-management', name: 'Knowledge Management', icon: Book }
     ];
 
     const handleSignOut = async () => {

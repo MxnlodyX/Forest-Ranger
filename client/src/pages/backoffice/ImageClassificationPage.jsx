@@ -429,16 +429,13 @@ export function ImageClassificationPage() {
 
 			const flagged = [];
 			data.results.forEach((r) => {
-				const mapped = mapApiResult(
-					r,
-					fileMap[r.filename] ?? null,
-					flagged.length,
+				flagged.push(
+					mapApiResult(
+						r,
+						fileMap[r.filename] ?? null,
+						flagged.length,
+					),
 				);
-				// Forest = normal background; skip it so skippedCount reflects
-				// how many "boring" frames were automatically filtered out.
-				if (mapped.category !== "Forest") {
-					flagged.push(mapped);
-				}
 			});
 
 			finishProgress(flagged, data.total_processed);
@@ -489,7 +486,7 @@ export function ImageClassificationPage() {
 		return matchCat && matchSearch;
 	});
 
-	const skippedCount = Math.max(0, totalUploaded - results.length);
+
 
 	// ── Render ───────────────────────────────────────────────────────────────────
 	return (
@@ -794,7 +791,7 @@ export function ImageClassificationPage() {
 							},
 							{
 								label: "Important Found",
-								value: results.length,
+								value: results.filter((r) => r.category !== "Forest").length,
 								icon: CheckCircle2,
 								textColor: "text-emerald-700",
 								iconBg: "bg-emerald-100",
@@ -851,7 +848,7 @@ export function ImageClassificationPage() {
 					{/* Filter bar */}
 					<div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6 flex flex-wrap items-center gap-3">
 						<div className="flex items-center gap-2 flex-wrap">
-							{["All", "Wildlife", "Trap", "Suspicious"].map(
+							{["All", "Wildlife", "Trap", "Forest", "Suspicious"].map(
 								(cat) => {
 									const count =
 										cat === "All"
@@ -937,24 +934,7 @@ export function ImageClassificationPage() {
 						</div>
 					)}
 
-					{/* Skipped / filtered-out notice */}
-					{skippedCount > 0 && (
-						<div className="mt-8 flex items-start gap-3 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-xl p-4">
-							<CheckCircle2
-								size={15}
-								className="text-gray-300 flex-shrink-0 mt-0.5"
-							/>
-							<span>
-								<strong className="text-gray-500 font-semibold">
-									{skippedCount} normal forest image
-									{skippedCount !== 1 ? "s" : ""}
-								</strong>{" "}
-								were automatically filtered out — no wildlife,
-								traps, or suspicious activity was detected in
-								those frames.
-							</span>
-						</div>
-					)}
+
 				</div>
 			)}
 

@@ -46,6 +46,15 @@ services:
     networks:
       - app-network
 
+  villager:
+    build:
+      context: ./vilager-side
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge

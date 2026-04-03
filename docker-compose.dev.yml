@@ -30,6 +30,20 @@ services:
       - CHOKIDAR_USEPOLLING=true
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
+  villager: # Villager Side (รัน 8080)
+        build:
+          context: ./vilager-side
+          target: builder
+        volumes:
+          - ./vilager-side:/app
+          - /app/node_modules
+        ports:
+          - "8080:8080" # แมปพอร์ตเครื่องเรา 8080 เข้า Container 8080
+        environment:
+          - CHOKIDAR_USEPOLLING=true
+        # สั่งให้รัน dev server บนพอร์ต 8080
+        command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080"]
+
   ai_service:
     volumes:
       - ./ai_service:/app # Map โค้ดในเครื่องเข้าไปใน Container

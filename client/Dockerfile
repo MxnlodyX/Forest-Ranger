@@ -11,5 +11,7 @@ RUN npm run build
 FROM nginx:alpine
 # Copy ไฟล์ที่ Build เสร็จแล้วไปให้ Nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy custom nginx config to proxy /api, /static, and /predict
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

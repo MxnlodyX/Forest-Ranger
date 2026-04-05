@@ -4,6 +4,20 @@ import { Navbar } from "../components/Navbar";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
+function getCardImage(item) {
+  if (item.image) {
+    return item.image.startsWith('http') || item.image.startsWith('blob')
+      ? item.image
+      : `${API_BASE}${item.image}`;
+  }
+  // Fallback: ดึง YouTube thumbnail จาก videoUrl เมื่อไม่มี cover image
+  if (item.videoUrl) {
+    const match = item.videoUrl.match(/(?:youtu\.be\/|v\/|embed\/|watch\?v=|&v=)([^#&?]{11})/);
+    if (match) return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+  }
+  return '';
+}
+
 export function KnowledgeSources() {
   const navigate = useNavigate();
   const [activeMediaType, setActiveMediaType] = useState("ทั้งหมด");
@@ -139,7 +153,7 @@ export function KnowledgeSources() {
               <article key={item.id} className="group flex flex-col rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border border-gray-100">
                 <div className="relative h-52 overflow-hidden shrink-0">
                   <img
-                    src={item.image && (item.image.startsWith('http') || item.image.startsWith('blob')) ? item.image : `${API_BASE}${item.image || ''}`}
+                    src={getCardImage(item)}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     loading="lazy"

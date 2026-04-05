@@ -12,6 +12,7 @@ import { TaskAssignPage } from './pages/backoffice/TaskAssignPage';
 import { ReportManagementPage } from './pages/backoffice/ReportManagementPage';
 import { ImageClassificationPage } from './pages/backoffice/ImageClassificationPage';
 import { KnowledgeManagementPage } from './pages/backoffice/KnowledgeManagementPage';
+import { MonthlyReportPage } from './pages/backoffice/MonthlyReportPage';
 
 
 import { FieldOpsHomePage } from './pages/field-ops/FieldOpsHomePage';
@@ -42,6 +43,7 @@ function App() {
             <Route path="/report-management" element={<ReportManagementPage />} />
 						<Route path="/image-classification" element={<ImageClassificationPage />} />
 						<Route path="/knowledge-management" element={<KnowledgeManagementPage />} />
+					<Route path="/monthly-report" element={<MonthlyReportPage />} />
 
           </Route>
         </Route>

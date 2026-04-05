@@ -387,3 +387,24 @@ CREATE TABLE IF NOT EXISTS knowledge_resource (
         ON DELETE SET NULL
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================
+-- SR_009: Monthly Report Summary (LLM Generated)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS monthly_report_summary (
+    summary_id        INT AUTO_INCREMENT,
+    year              INT          NOT NULL,
+    month             INT          NOT NULL,
+    total_incidents   INT          NOT NULL DEFAULT 0,
+    summary_markdown  MEDIUMTEXT   NOT NULL,
+    generated_by      INT,
+    generated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (summary_id),
+    UNIQUE KEY uq_year_month (year, month),
+    KEY idx_monthly_report_generated_by (generated_by),
+    CONSTRAINT fk_monthly_report_generated_by
+        FOREIGN KEY (generated_by) REFERENCES staff(staff_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

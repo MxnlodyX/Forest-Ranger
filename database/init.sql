@@ -362,3 +362,28 @@ WHERE
         WHERE t.task_title = 'Camera Trap Maintenance - Eastern Valley'
     )
 LIMIT 1;
+
+-- ============================================
+-- SR_012: Knowledge Resource
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS knowledge_resource (
+    resource_id    INT AUTO_INCREMENT,
+    title          VARCHAR(255)  NOT NULL,
+    media_type     VARCHAR(20)   NOT NULL,           -- 'บทความ' | 'วิดีโอ'
+    category       VARCHAR(100)  NOT NULL,
+    excerpt        TEXT,
+    content        JSON,                             -- EditorJS block data
+    read_time      VARCHAR(50),
+    image_url      VARCHAR(500),
+    video_url      VARCHAR(500),
+    created_by     INT,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (resource_id),
+    KEY idx_knowledge_created_by (created_by),
+    CONSTRAINT fk_knowledge_created_by
+        FOREIGN KEY (created_by) REFERENCES staff(staff_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

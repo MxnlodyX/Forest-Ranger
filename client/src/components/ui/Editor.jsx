@@ -11,6 +11,12 @@ import InlineCode from '@editorjs/inline-code';
 export function Editor({ data, onChange, placeholder = 'Start writing...' }) {
   const ejInstance = useRef(null);
   const editorRef = useRef(null);
+  // เก็บ onChange ล่าสุดไว้ใน ref เพื่อป้องกัน stale closure
+  // (EditorJS จะ initEditor ครั้งเดียว แต่ prop onChange อาจเปลี่ยนทุก render)
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (!ejInstance.current) {
@@ -71,7 +77,8 @@ export function Editor({ data, onChange, placeholder = 'Start writing...' }) {
       },
       onChange: async () => {
         const savedData = await editor.save();
-        onChange(savedData);
+        // เรียก ref แทน closure เพื่อให้ได้ callback เวอร์ชันล่าสุดเสมอ
+        onChangeRef.current(savedData);
       },
     });
     ejInstance.current = editor;

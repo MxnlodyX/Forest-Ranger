@@ -1,78 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Eye, Pencil, Trash2, Plus, Search, X, FileText, Video, PlayCircle } from 'lucide-react';
-import { resolveMediaUrl } from '../../services/api';
+import { api, resolveMediaUrl } from '../../services/api';
 import { Editor } from '../../components/ui/Editor';
-
-// Mock Data Converter Helper
-const stringToEditorData = (str) => ({
-  time: Date.now(),
-  blocks: [
-    {
-      type: 'paragraph',
-      data: { text: str }
-    }
-  ],
-  version: '2.31.5'
-});
-
-// Mock Data
-const initialKnowledgeResources = [
-  {
-    id: 1,
-    title: "เส้นทางศึกษาธรรมชาติ: เรียนรู้ป่าดิบชื้นเขตร้อน",
-    excerpt: "สำรวจความหลากหลายของสิ่งมีชีวิตตามเส้นทางเดินป่า ตั้งแต่พืชคลุมดินจนถึงเรือนยอดไม้สูง",
-    category: "ระบบนิเวศ",
-    date: "28 มี.ค. 2569",
-    readTime: "8 นาที",
-    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1920&auto=format&fit=crop",
-    type: "บทความ",
-    content: stringToEditorData("บทความนี้จะพาคุณไปสำรวจความมหัศจรรย์ของป่าดิบชื้นเขตร้อน...")
-  },
-  {
-    id: 2,
-    title: "น้ำตกและลำธาร: เส้นเลือดของผืนป่า",
-    excerpt: "ความสำคัญของระบบน้ำในป่าต่อความยั่งยืนของระบบนิเวศทั้งหมด",
-    category: "แหล่งน้ำ",
-    date: "25 มี.ค. 2569",
-    readTime: "5 นาที",
-    image: "https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=800&auto=format&fit=crop",
-    type: "วิดีโอ",
-    content: stringToEditorData("วิดีโอนี้แสดงให้เห็นถึงความเชื่อมโยงระหว่างต้นน้ำและปลายน้ำ...")
-  },
-  {
-    id: 3,
-    title: "นกป่าเขตร้อน: ตัวชี้วัดสุขภาพป่า",
-    excerpt: "ทำไมนกจึงเป็นดัชนีชี้วัดที่ดีที่สุดของความสมบูรณ์ของระบบนิเวศป่า",
-    category: "สัตว์ป่า",
-    date: "20 มี.ค. 2569",
-    readTime: "6 นาที",
-    image: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800&auto=format&fit=crop",
-    type: "บทความ",
-    content: stringToEditorData("การสำรวจประชากรนกสามารถบอกเราได้ถึงความเปลี่ยนแปลงของสภาพแวดล้อม...")
-  },
-  {
-    id: 4,
-    title: "ไฟป่า: ภัยเงียบที่ทำลายล้างผืนป่าทั่วโลก",
-    excerpt: "สาเหตุ ผลกระทบ และวิธีป้องกันไฟป่าที่ทุกคนควรรู้",
-    category: "ภัยพิบัติ",
-    date: "15 มี.ค. 2569",
-    readTime: "10 นาที",
-    image: "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop",
-    type: "บทความ",
-    content: stringToEditorData("ทำความเข้าใจสาเหตุของไฟป่า ทั้งที่เกิดจากธรรมชาติและน้ำมือมนุษย์...")
-  },
-  {
-    id: 5,
-    title: "การปลูกป่าทดแทน: แนวทางฟื้นฟูระบบนิเวศ",
-    excerpt: "วิธีการปลูกป่าที่ถูกต้องเพื่อฟื้นฟูพื้นที่ป่าเสื่อมโทรมอย่างยั่งยืน",
-    category: "การอนุรักษ์",
-    date: "10 มี.ค. 2569",
-    readTime: "12 นาที",
-    image: "https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?q=80&w=800&auto=format&fit=crop",
-    type: "วิดีโอ",
-    content: stringToEditorData("เทคนิคการเลือกพันธุ์ไม้และการดูแลหลังการปลูก...")
-  },
-];
 
 const mediaTypes = ["บทความ", "วิดีโอ"];
 const categories = ["ระบบนิเวศ", "แหล่งน้ำ", "สัตว์ป่า", "ภัยพิบัติ", "การอนุรักษ์"];
@@ -166,12 +95,14 @@ const EditorContentRenderer = ({ content }) => {
 };
 
 export function KnowledgeManagementPage() {
-  const [resources, setResources] = useState(initialKnowledgeResources);
+  const [resources, setResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | 'view' | 'delete'
   const [selectedResourceId, setSelectedResourceId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -185,6 +116,22 @@ export function KnowledgeManagementPage() {
     imageFile: null,
     imagePreview: '',
   });
+
+  const fetchResources = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.get('/api/knowledge');
+      setResources(data);
+    } catch {
+      // สื่อยังไม่มีหรือ network error — แสดงรายการว่าง
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchResources();
+  }, [fetchResources]);
 
   const filteredResources = useMemo(() => {
     if (!searchQuery.trim()) return resources;
@@ -271,58 +218,51 @@ export function KnowledgeManagementPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setIsSubmitting(true);
+    setActionError('');
 
     try {
-      let finalImageUrl = formData.image;
-      if (formData.imageFile) {
-        finalImageUrl = formData.imagePreview; 
-      }
+      const fd = new FormData();
+      fd.append('title', formData.title);
+      fd.append('type', formData.type);
+      fd.append('category', formData.category);
+      fd.append('excerpt', formData.excerpt);
+      fd.append('readTime', formData.readTime);
+      fd.append('videoUrl', formData.type === 'วิดีโอ' ? formData.videoUrl : '');
+      fd.append('content', JSON.stringify(formData.content));
 
-      const payload = {
-        title: formData.title,
-        type: formData.type,
-        category: formData.category,
-        excerpt: formData.excerpt,
-        content: formData.content,
-        readTime: formData.readTime,
-        image: finalImageUrl,
-        videoUrl: formData.type === 'วิดีโอ' ? formData.videoUrl : '',
-      };
+      if (formData.imageFile) {
+        fd.append('image', formData.imageFile);
+      } else {
+        fd.append('imageUrl', formData.image || '');
+      }
 
       if (modalMode === 'add') {
-        const newResource = {
-          ...payload,
-          id: Date.now(),
-          date: new Date().toLocaleDateString('th-TH', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          }),
-        };
-        setResources(prev => [newResource, ...prev]);
+        await api.postForm('/api/knowledge', fd);
       } else if (modalMode === 'edit' && selectedResourceId) {
-        setResources(prev => prev.map(r =>
-          r.id === selectedResourceId ? { ...r, ...payload } : r
-        ));
+        await api.putForm(`/api/knowledge/${selectedResourceId}`, fd);
       }
+
+      await fetchResources();
       closeModal();
     } catch (err) {
-      setActionError('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      setActionError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     setIsSubmitting(true);
+    setActionError('');
     try {
-      setResources(prev => prev.filter(r => r.id !== selectedResourceId));
+      await api.delete(`/api/knowledge/${selectedResourceId}`);
+      await fetchResources();
       closeModal();
     } catch (err) {
-      setActionError('เกิดข้อผิดพลาดในการลบข้อมูล');
+      setActionError(err.message || 'เกิดข้อผิดพลาดในการลบข้อมูล');
     } finally {
       setIsSubmitting(false);
     }
@@ -378,7 +318,7 @@ export function KnowledgeManagementPage() {
               {filteredResources.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-12 text-center text-gray-500">
-                    ไม่พบข้อมูลที่ค้นหา
+                    {isLoading ? 'กำลังโหลดข้อมูล...' : 'ไม่พบข้อมูลที่ค้นหา'}
                   </td>
                 </tr>
               ) : (
@@ -563,7 +503,7 @@ export function KnowledgeManagementPage() {
                     <Editor 
                       key={selectedResourceId || 'new'}
                       data={formData.content}
-                      onChange={(data) => setFormData({ ...formData, content: data })}
+                      onChange={(data) => setFormData(prev => ({ ...prev, content: data }))}
                       placeholder={formData.type === 'วิดีโอ' ? 'ระบุรายละเอียดเพิ่มเติม' : 'พิมพ์เนื้อหาบทความที่นี่...'}
                     />
                   </div>

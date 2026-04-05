@@ -6,6 +6,7 @@ from .inventory import inventory_bp
 from .dashboard import dashboard_bp 
 from .report_management import report_bp
 from .patrol_route import patrol_route_bp
+from .knowledge_management import knowledge_bp
 
 def register_blueprints(app) -> None:
     app.register_blueprint(users_bp)
@@ -16,3 +17,4 @@ def register_blueprints(app) -> None:
     app.register_blueprint(inventory_bp)
     app.register_blueprint(report_bp)
     app.register_blueprint(patrol_route_bp)
+    app.register_blueprint(knowledge_bp)

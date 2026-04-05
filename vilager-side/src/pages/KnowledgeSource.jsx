@@ -1,67 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 
-export function KnowledgeSources() {
-  // State สำหรับเก็บประเภทสื่อที่กำลังเลือกอยู่
-  const [activeMediaType, setActiveMediaType] = useState("ทั้งหมด");
-  // State สำหรับเก็บหมวดหมู่ที่กำลังเลือกอยู่
-  const [activeCategory, setActiveCategory] = useState("ทั้งหมด");
-  // State สำหรับเก็บข้อความค้นหา
-  const [searchQuery, setSearchQuery] = useState("");
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-  // ข้อมูลบทความจำลอง
-  const resources = [
-    {
-      id: 1,
-      title: "เส้นทางศึกษาธรรมชาติ: เรียนรู้ป่าดิบชื้นเขตร้อน",
-      excerpt: "สำรวจความหลากหลายของสิ่งมีชีวิตตามเส้นทางเดินป่า ตั้งแต่พืชคลุมดินจนถึงเรือนยอดไม้สูง",
-      category: "ระบบนิเวศ",
-      date: "28 มี.ค. 2569",
-      readTime: "8 นาที",
-      image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1920&auto=format&fit=crop",
-      type: "บทความ"
-    },
-    {
-      id: 2,
-      title: "น้ำตกและลำธาร: เส้นเลือดของผืนป่า",
-      excerpt: "ความสำคัญของระบบน้ำในป่าต่อความยั่งยืนของระบบนิเวศทั้งหมด",
-      category: "แหล่งน้ำ",
-      date: "25 มี.ค. 2569",
-      readTime: "5 นาที",
-      image: "https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=800&auto=format&fit=crop",
-      type: "วิดีโอ"
-    },
-    {
-      id: 3,
-      title: "นกป่าเขตร้อน: ตัวชี้วัดสุขภาพป่า",
-      excerpt: "ทำไมนกจึงเป็นดัชนีชี้วัดที่ดีที่สุดของความสมบูรณ์ของระบบนิเวศป่า",
-      category: "สัตว์ป่า",
-      date: "20 มี.ค. 2569",
-      readTime: "6 นาที",
-      image: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800&auto=format&fit=crop",
-      type: "บทความ"
-    },
-    {
-      id: 4,
-      title: "ไฟป่า: ภัยเงียบที่ทำลายล้างผืนป่าทั่วโลก",
-      excerpt: "สาเหตุ ผลกระทบ และวิธีป้องกันไฟป่าที่ทุกคนควรรู้",
-      category: "ภัยพิบัติ",
-      date: "15 มี.ค. 2569",
-      readTime: "10 นาที",
-      image: "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop",
-      type: "บทความ"
-    },
-    {
-      id: 5,
-      title: "การปลูกป่าทดแทน: แนวทางฟื้นฟูระบบนิเวศ",
-      excerpt: "วิธีการปลูกป่าที่ถูกต้องเพื่อฟื้นฟูพื้นที่ป่าเสื่อมโทรมอย่างยั่งยืน",
-      category: "การอนุรักษ์",
-      date: "10 มี.ค. 2569",
-      readTime: "12 นาที",
-      image: "https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?q=80&w=800&auto=format&fit=crop",
-      type: "วิดีโอ"
-    },
-  ];
+export function KnowledgeSources() {
+  const navigate = useNavigate();
+  const [activeMediaType, setActiveMediaType] = useState("ทั้งหมด");
+  const [activeCategory, setActiveCategory] = useState("ทั้งหมด");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [resources, setResources] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/knowledge`)
+      .then((res) => res.json())
+      .then((data) => setResources(Array.isArray(data) ? data : []))
+      .catch(() => setResources([]))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   // กรองข้อมูลตามเงื่อนไข
   const filteredResources = resources.filter((item) => {
@@ -172,7 +129,7 @@ export function KnowledgeSources() {
         </div>
 
         <p className="text-sm text-gray-500 mb-6 font-medium">
-          แสดง {filteredResources.length} จาก {resources.length} รายการ
+          {isLoading ? 'กำลังโหลดข้อมูล...' : `แสดง ${filteredResources.length} จาก ${resources.length} รายการ`}
         </p>
 
         {/* Content Grid */}
@@ -182,7 +139,7 @@ export function KnowledgeSources() {
               <article key={item.id} className="group flex flex-col rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border border-gray-100">
                 <div className="relative h-52 overflow-hidden shrink-0">
                   <img
-                    src={item.image}
+                    src={item.image && (item.image.startsWith('http') || item.image.startsWith('blob')) ? item.image : `${API_BASE}${item.image || ''}`}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     loading="lazy"
@@ -222,7 +179,9 @@ export function KnowledgeSources() {
                         {item.readTime}
                       </span>
                     </div>
-                    <button className="text-green-600 text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all">
+                    <button
+                      onClick={() => navigate(`/knowledge/${item.id}`)}
+                      className="text-green-600 text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all">
                       อ่าน <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
                     </button>
                   </div>

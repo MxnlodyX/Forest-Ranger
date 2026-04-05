@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), basicSsl()],
   server: {
     host: true, // อนุญาตให้ Docker map port ออกมาได้
+    port: 443,
     watch: {
       usePolling: true, // จำเป็นสำหรับ Docker บน Windows (inotify ไม่ทำงาน)
     },
@@ -18,6 +20,11 @@ export default defineConfig({
       // ให้ไฟล์รูปจาก backend static folder เข้าถึงได้ผ่าน dev server
       '/static': {
         target: 'http://backend:5000',
+        changeOrigin: true,
+      },
+      // AI service predict endpoint
+      '/predict': {
+        target: 'http://ai_service:3000',
         changeOrigin: true,
       }
     }

@@ -12,13 +12,20 @@ CREATE TABLE IF NOT EXISTS staff (
     title_role VARCHAR(100),
     staff_role VARCHAR(100) NOT NULL,
     area VARCHAR(100), -- <--- เติมคอลัมน์นี้เข้ามาให้ตรงกับ Frontend
-    status ENUM('Off Duty', 'On Duty', 'Leave') DEFAULT 'Off Duty',
+    status ENUM('Off Duty', 'On Duty', 'Active') DEFAULT 'Off Duty',
     profile_image VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (staff_id),
     UNIQUE KEY uq_staff_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+UPDATE staff
+SET status = 'Active'
+WHERE status = 'Leave';
+
+ALTER TABLE staff
+    MODIFY COLUMN status ENUM('Off Duty', 'On Duty', 'Active') DEFAULT 'Off Duty';
 
 CREATE TABLE IF NOT EXISTS location (
     location_id INT AUTO_INCREMENT,
@@ -63,6 +70,40 @@ CREATE TABLE IF NOT EXISTS task (
     CONSTRAINT fk_task_location_id
         FOREIGN KEY (location_id) REFERENCES location(location_id)
         ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS patrol_route (
+    route_id INT AUTO_INCREMENT,
+    route_name VARCHAR(255) NOT NULL,
+    created_by INT,
+    status ENUM('Draft', 'Active', 'Archived') DEFAULT 'Draft',
+    distance_km DECIMAL(8,2),
+    estimated_minutes INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (route_id),
+    KEY idx_patrol_route_created_by (created_by),
+    CONSTRAINT fk_patrol_route_created_by
+        FOREIGN KEY (created_by) REFERENCES staff(staff_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS patrol_route_point (
+    point_id INT AUTO_INCREMENT,
+    route_id INT NOT NULL,
+    seq_no INT NOT NULL,
+    lat DECIMAL(10,7) NOT NULL,
+    lng DECIMAL(10,7) NOT NULL,
+    label VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (point_id),
+    UNIQUE KEY uq_route_seq (route_id, seq_no),
+    KEY idx_patrol_route_point_route_id (route_id),
+    CONSTRAINT fk_patrol_route_point_route_id
+        FOREIGN KEY (route_id) REFERENCES patrol_route(route_id)
+        ON DELETE CASCADE
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -321,3 +362,49 @@ WHERE
         WHERE t.task_title = 'Camera Trap Maintenance - Eastern Valley'
     )
 LIMIT 1;
+
+-- ============================================
+-- SR_012: Knowledge Resource
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS knowledge_resource (
+    resource_id    INT AUTO_INCREMENT,
+    title          VARCHAR(255)  NOT NULL,
+    media_type     VARCHAR(20)   NOT NULL,           -- 'บทความ' | 'วิดีโอ'
+    category       VARCHAR(100)  NOT NULL,
+    excerpt        TEXT,
+    content        JSON,                             -- EditorJS block data
+    read_time      VARCHAR(50),
+    image_url      VARCHAR(500),
+    video_url      VARCHAR(500),
+    created_by     INT,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (resource_id),
+    KEY idx_knowledge_created_by (created_by),
+    CONSTRAINT fk_knowledge_created_by
+        FOREIGN KEY (created_by) REFERENCES staff(staff_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================
+-- SR_009: Monthly Report Summary (LLM Generated)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS monthly_report_summary (
+    summary_id        INT AUTO_INCREMENT,
+    year              INT          NOT NULL,
+    month             INT          NOT NULL,
+    total_incidents   INT          NOT NULL DEFAULT 0,
+    summary_markdown  MEDIUMTEXT   NOT NULL,
+    generated_by      INT,
+    generated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (summary_id),
+    UNIQUE KEY uq_year_month (year, month),
+    KEY idx_monthly_report_generated_by (generated_by),
+    CONSTRAINT fk_monthly_report_generated_by
+        FOREIGN KEY (generated_by) REFERENCES staff(staff_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

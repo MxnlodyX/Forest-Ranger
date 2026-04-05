@@ -3,26 +3,31 @@
 > **Project for ITDS365 Agile Software Development**
 
 
-##  Team Members & Scrum Roles
-| Student ID | Name | Agile Role | 
-| :--- | :--- | :--- | 
-| 6687004 | นายกฤตานนท์ จงกล้าหาญ | Product Owner | 
-| 6687029 | นายปิติ ดุสิตศานติ์ | Scrum Master | 
-| 6687034 | นายพิพัฒพงศ์ พริ้มนะ | Developer | 
-| 6687045 | นายวัฒนชัย บุญไชย | Developer  | 
+##  Team Members 
+| Student ID | Name | Role |
+| :--- | :--- | :--- |
+| 6687004 | นายกฤตานนท์ จงกล้าหาญ  | Product Owner |
+| 6687029 | นายปิติ ดุสิตศานติ์ | Developer |
+| 6687034 | นายพิพัฒพงศ์ พริ้มนะ | Developer |
+| 6687045 | นายวัฒนชัย บุญไชย | Scrum Master |
 
 ##  Technology Stack
 
 **Frontend:**
-* **React & JavaScript**
+* **React**
+* **JavaScript**
 * **Tailwind CSS** 
 
 **Backend (Microservices):**
 * **Node.js** 
-* **Python (Flask)** 
-
+* **Flask**
+  
+**Testing**
+* **PyTest (Unit Test)**
+* **Cypress.io (E2E Test)**
+  
 **Database**
 * **MySQL** 
 
-**DevOps & Infrastructure**
-* **Docker & Docker Compose** 
+**DevOps**
+* **Docker** 

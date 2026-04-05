@@ -393,11 +393,11 @@ export function FieldOpsReportPage() {
 
             {modalMode && (
                 <div
-                    className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm px-4 py-6 flex items-center justify-center overflow-hidden"
+                    className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm px-4 py-4 sm:py-6 flex items-end sm:items-center justify-center overflow-hidden"
                     onClick={closeModal}
                 >
                     <div
-                        className="w-full max-w-2xl bg-[#1b2433] border border-slate-700 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
+                        className="w-full max-w-2xl bg-[#1b2433] border border-slate-700 rounded-2xl shadow-2xl flex flex-col max-h-[calc(100vh-7.5rem)] sm:max-h-[90vh] mb-24 sm:mb-0"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <div className="flex-none flex items-center justify-between p-5 border-b border-slate-700/60">

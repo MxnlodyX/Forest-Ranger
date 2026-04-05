@@ -23,9 +23,32 @@ services:
     networks:
       - app-network
 
+  ai_service:
+    build:
+      context: ./ai_service
+    restart: always
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - ./ai_service:/ai_service           # ดึงโค้ดจากเครื่องเราไปเชื่อมกับใน Container (แก้โค้ดปุ๊บ Server รีสตาร์ทปั๊บ)
+      - /ai_service/node_modules           # ป้องกันไม่ให้ node_modules จากเครื่องเราไปกวนใน Container
+    networks:
+      - app-network
+
   client:
     build:
       context: ./client
+    restart: always
+    depends_on:
+      - backend
+      - ai_service
+    networks:
+      - app-network
+
+  villager:
+    build:
+      context: ./vilager-side
     restart: always
     depends_on:
       - backend

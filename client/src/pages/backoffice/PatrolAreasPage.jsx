@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Filter,
@@ -14,6 +14,8 @@ import { MapContainer, Marker, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Button } from '../../components/ui';
+import { api } from '../../services/api';
+import { useApi } from '../../hooks/useApi';
 
 const defaultMapPoint = [14.4386, 101.3724];
 
@@ -54,36 +56,6 @@ const locationTypeOptions = [
 
 const riskLevelOptions = ['Low', 'Medium', 'High'];
 
-const initialLocations = [
-  {
-    id: 'LOC-001',
-    name: 'Huai Nam Creek Point',
-    type: 'Water Source',
-    sector: 'Northern Sector A',
-    coordinate: '14.4421, 101.3762',
-    riskLevel: 'Low',
-    description: 'Reliable water source, often used by deer and gaur.',
-  },
-  {
-    id: 'LOC-002',
-    name: 'Ridge 7 Patrol Hut',
-    type: 'Ranger Outpost',
-    sector: 'Eastern Valley',
-    coordinate: '14.4358, 101.3805',
-    riskLevel: 'Medium',
-    description: 'Temporary shelter for overnight patrol teams.',
-  },
-  {
-    id: 'LOC-003',
-    name: 'Dry Pine Belt',
-    type: 'Fire Watch Point',
-    sector: 'Western Perimeter',
-    coordinate: '14.4310, 101.3647',
-    riskLevel: 'High',
-    description: 'Dry vegetation zone. Needs daily fire-risk observation.',
-  },
-];
-
 const emptyForm = {
   name: '',
   type: locationTypeOptions[0],
@@ -94,16 +66,52 @@ const emptyForm = {
 };
 
 export function PatrolAreasPage() {
-  const [locations, setLocations] = useState(initialLocations);
+  const fetchLocations = useCallback(() => api.get('/api/locations'), []);
+  const {
+    data: locationData,
+    loading: locationsLoading,
+    error: locationsError,
+    refetch: refetchLocations,
+  } = useApi(fetchLocations);
+
+  const locations = useMemo(
+    () => (Array.isArray(locationData) ? locationData : []).map((item) => ({
+      id: item.location_id,
+      name: item.location_name || '',
+      type: item.location_type || 'Water Source',
+      sector: item.sector || '',
+      coordinate: item.coordinates || '',
+      riskLevel: item.risk_level || 'Low',
+      description: item.description || '',
+    })),
+    [locationData],
+  );
+
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
   const [riskFilter, setRiskFilter] = useState('All');
-  const [selectedLocationId, setSelectedLocationId] = useState(initialLocations[0]?.id ?? null);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingLocationId, setEditingLocationId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [mapPosition, setMapPosition] = useState(defaultMapPoint);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    if (!locations.length) {
+      setSelectedLocationId(null);
+      return;
+    }
+
+    setSelectedLocationId((prev) => {
+      if (prev && locations.some((item) => item.id === prev)) {
+        return prev;
+      }
+      return locations[0].id;
+    });
+  }, [locations]);
 
   const stats = useMemo(() => {
     const highRisk = locations.filter((item) => item.riskLevel === 'High').length;
@@ -120,7 +128,7 @@ export function PatrolAreasPage() {
     return locations.filter((item) => {
       const q = query.toLowerCase();
       const matchQuery =
-        item.id.toLowerCase().includes(q) ||
+        String(item.id).toLowerCase().includes(q) ||
         item.name.toLowerCase().includes(q) ||
         item.sector.toLowerCase().includes(q) ||
         item.type.toLowerCase().includes(q);
@@ -141,6 +149,7 @@ export function PatrolAreasPage() {
     setEditingLocationId(null);
     setFormData(emptyForm);
     setMapPosition(defaultMapPoint);
+    setFormError('');
     setIsFormOpen(true);
   };
 
@@ -155,6 +164,7 @@ export function PatrolAreasPage() {
       description: location.description,
     });
     setMapPosition(parseCoordinate(location.coordinate) ?? defaultMapPoint);
+    setFormError('');
     setIsFormOpen(true);
   };
 
@@ -162,48 +172,63 @@ export function PatrolAreasPage() {
     setIsFormOpen(false);
     setEditingLocationId(null);
     setFormData(emptyForm);
+    setFormError('');
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setFormError('');
 
-    if (editingLocationId) {
-      setLocations((prev) =>
-        prev.map((item) =>
-          item.id === editingLocationId
-            ? {
-              ...item,
-              ...formData,
-            }
-            : item,
-        ),
-      );
-      setSelectedLocationId(editingLocationId);
-    } else {
-      const newId = `LOC-${Date.now().toString().slice(-4)}`;
-      const newLocation = {
-        id: newId,
-        ...formData,
-      };
-
-      setLocations((prev) => [newLocation, ...prev]);
-      setSelectedLocationId(newId);
+    const parsed = parseCoordinate(formData.coordinate);
+    if (!parsed) {
+      setFormError('Coordinate must be a valid lat, lng pair.');
+      return;
     }
 
-    closeForm();
+    const payload = {
+      location_name: formData.name.trim(),
+      location_type: formData.type,
+      sector: formData.sector.trim() || null,
+      coordinates: formatCoordinate(parsed[0], parsed[1]),
+      risk_level: formData.riskLevel,
+      description: formData.description.trim() || null,
+    };
+
+    if (!payload.location_name) {
+      setFormError('Location name is required.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      let saved;
+      if (editingLocationId) {
+        saved = await api.put(`/api/locations/${editingLocationId}`, payload);
+      } else {
+        saved = await api.post('/api/locations', payload);
+      }
+      await refetchLocations();
+      setSelectedLocationId(saved?.location_id ?? null);
+      closeForm();
+    } catch (error) {
+      setFormError(error.message || 'Failed to save location point.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = (locationId) => {
+  const handleDelete = async (locationId) => {
     const ok = window.confirm('Delete this location point?');
     if (!ok) return;
-
-    setLocations((prev) => {
-      const remaining = prev.filter((item) => item.id !== locationId);
+    try {
+      await api.delete(`/api/locations/${locationId}`);
+      await refetchLocations();
       if (selectedLocationId === locationId) {
-        setSelectedLocationId(remaining[0]?.id ?? null);
+        setSelectedLocationId(null);
       }
-      return remaining;
-    });
+    } catch (error) {
+      window.alert(error.message || 'Failed to delete location point.');
+    }
   };
 
   const getRiskPill = (riskLevel) => {
@@ -218,7 +243,7 @@ export function PatrolAreasPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Patrol Areas</h1>
           <p className="mt-1 text-sm text-gray-500">
-            จัดการจุด Location ในป่า ว่าจุดไหนอยู่ตรงไหน และจุดนั้นคืออะไร
+            Manage forest location points, track where they are, and define their purpose.
           </p>
         </div>
         <Button onClick={openCreateForm} className="gap-2">
@@ -264,7 +289,7 @@ export function PatrolAreasPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="ค้นหาจากชื่อจุด, รหัส, sector หรือประเภท"
+                placeholder="Search by location name, ID, sector, or type"
                 className="h-10 w-full rounded-lg border border-gray-300 py-2 pl-10 pr-10 text-sm text-gray-800 outline-none transition focus:border-blue-500"
               />
               {query && (
@@ -334,10 +359,22 @@ export function PatrolAreasPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredLocations.length === 0 ? (
+                {locationsLoading ? (
+                  <tr>
+                    <td className="px-4 py-10 text-center text-gray-400" colSpan={5}>
+                      Loading location points...
+                    </td>
+                  </tr>
+                ) : locationsError ? (
+                  <tr>
+                    <td className="px-4 py-10 text-center text-red-600" colSpan={5}>
+                      {locationsError}
+                    </td>
+                  </tr>
+                ) : filteredLocations.length === 0 ? (
                   <tr>
                     <td className="px-4 py-10 text-center text-gray-500" colSpan={5}>
-                      ยังไม่พบ Location ที่ตรงกับเงื่อนไขค้นหา
+                      No locations match the current filters.
                     </td>
                   </tr>
                 ) : (
@@ -350,7 +387,7 @@ export function PatrolAreasPage() {
                     >
                       <td className="px-4 py-3 align-top">
                         <p className="font-semibold text-gray-900">{item.name}</p>
-                        <p className="text-xs text-gray-500">{item.id} • {item.sector}</p>
+                        <p className="text-xs text-gray-500">LOC-{item.id} • {item.sector}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-700">{item.type}</td>
                       <td className="px-4 py-3">
@@ -398,7 +435,7 @@ export function PatrolAreasPage() {
         <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-4">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Location Details</h2>
           {!selectedLocation ? (
-            <p className="text-sm text-gray-500">เลือก Location จากตารางเพื่อดูรายละเอียด</p>
+            <p className="text-sm text-gray-500">Select a location from the table to view details.</p>
           ) : (
             <div className="space-y-4">
               <div>
@@ -409,7 +446,7 @@ export function PatrolAreasPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Location ID</p>
-                  <p className="mt-1 text-sm text-gray-800">{selectedLocation.id}</p>
+                  <p className="mt-1 text-sm text-gray-800">LOC-{selectedLocation.id}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sector</p>
@@ -477,11 +514,17 @@ export function PatrolAreasPage() {
                 {editingLocationId ? 'Update Location Point' : 'Create Location Point'}
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                ระบุว่า location จุดนี้คืออะไร อยู่ sector ไหน และพิกัดอะไร
+                Specify what this location point is, which sector it belongs to, and its coordinates.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 p-5">
+              {formError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {formError}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-gray-700">Location Name</label>
@@ -579,7 +622,7 @@ export function PatrolAreasPage() {
                   </MapContainer>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
-                  Tip: ลากหมุดเพื่อระบุตำแหน่ง หรือพิมพ์พิกัดในรูปแบบ lat, lng ได้
+                  Tip: Drag the marker to set the position, or enter coordinates in lat, lng format.
                 </p>
               </div>
 
@@ -590,15 +633,17 @@ export function PatrolAreasPage() {
                   value={formData.description}
                   onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
-                  placeholder="รายละเอียดของจุดนี้ เช่น ข้อควรระวัง หรือวัตถุประสงค์ของจุด"
+                  placeholder="Describe this point, such as cautions or operational purpose."
                 />
               </div>
 
               <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
-                <Button type="button" variant="secondary" onClick={closeForm}>
+                <Button type="button" variant="secondary" onClick={closeForm} disabled={isSaving}>
                   Cancel
                 </Button>
-                <Button type="submit">{editingLocationId ? 'Save Changes' : 'Create Point'}</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : editingLocationId ? 'Save Changes' : 'Create Point'}
+                </Button>
               </div>
             </form>
           </div>

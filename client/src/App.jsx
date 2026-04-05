@@ -1,6 +1,7 @@
 import { AppProvider } from './context/AppContext';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+
 import { BackOfficeLayout } from './pages/backoffice/BackOfficeLayout';
 import { DashboardPage } from './pages/backoffice/DashboardPage';
 import { HRMDashboard } from './pages/backoffice/HRM';
@@ -9,6 +10,11 @@ import { PatrolAreasPage } from './pages/backoffice/PatrolAreasPage';
 import { BackofficeSignInPage } from './pages/BackofficeSignInPage';
 import { TaskAssignPage } from './pages/backoffice/TaskAssignPage';
 import { ReportManagementPage } from './pages/backoffice/ReportManagementPage';
+import { ImageClassificationPage } from './pages/backoffice/ImageClassificationPage';
+import { KnowledgeManagementPage } from './pages/backoffice/KnowledgeManagementPage';
+import { MonthlyReportPage } from './pages/backoffice/MonthlyReportPage';
+
+
 import { FieldOpsHomePage } from './pages/field-ops/FieldOpsHomePage';
 import { FieldOpsLayout } from './pages/field-ops/FieldOpsLayout';
 import { FieldOpsMapPage } from './pages/field-ops/FieldOpsMapPage';
@@ -35,6 +41,10 @@ function App() {
             <Route path="/areas" element={<PatrolAreasPage />} />
             <Route path="/taskassignment" element={<TaskAssignPage />} />
             <Route path="/report-management" element={<ReportManagementPage />} />
+						<Route path="/image-classification" element={<ImageClassificationPage />} />
+						<Route path="/knowledge-management" element={<KnowledgeManagementPage />} />
+					<Route path="/monthly-report" element={<MonthlyReportPage />} />
+
           </Route>
         </Route>
 

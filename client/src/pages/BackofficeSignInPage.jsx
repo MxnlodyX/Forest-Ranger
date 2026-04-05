@@ -67,7 +67,6 @@ export function BackofficeSignInPage() {
                         </div>
                         <h1 className="text-3xl font-bold mb-2 leading-tight">Forest Shield<br/>Back Office</h1>
                         <p className="text-emerald-100/70 text-sm mt-4 leading-relaxed">
-                            Centralized command center for monitoring ecosystem health, managing field operations, and analyzing spatial data.
                         </p>
                     </div>
 
@@ -125,7 +124,7 @@ export function BackofficeSignInPage() {
                             </div>
                         </div>
 
-                        {/* Options: Remember me & Forgot Password */}
+                        {/* Options: Remember me & Forgot Password
                         <div className="flex justify-between items-center mt-1">
                             <label className="flex items-center gap-2 cursor-pointer group">
                                 <div className={`w-4 h-4 rounded border flex justify-center items-center transition-colors ${rememberMe ? 'bg-[#1b4b32] border-[#1b4b32]' : 'border-slate-300 group-hover:border-[#1b4b32]'}`}>
@@ -133,10 +132,10 @@ export function BackofficeSignInPage() {
                                 </div>
                                 <input type="checkbox" className="hidden" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} />
                                 <span className="text-[13px] text-slate-600 font-medium">Remember me</span>
-                            </label>
+                            </label> */}
                             
                           
-                        </div>
+                        {/* </div> */}
 
                         {/* Submit Button */}
                         <button

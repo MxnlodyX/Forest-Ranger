@@ -27,8 +27,8 @@ export function FieldOpsHomePage() {
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 font-medium tracking-wide">Ranger ID: #4492</p>
-              <h1 className="text-lg font-bold text-white leading-tight">Officer Miller</h1>
+              <p className="text-[11px] text-slate-400 font-medium tracking-wide">Agile Lover</p>
+              <h1 className="text-lg font-bold text-white leading-tight">Forest Shield Field Ops</h1>
             </div>
           </div>
           

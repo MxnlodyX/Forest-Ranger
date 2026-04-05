@@ -1,8 +1,38 @@
 // FieldOpsNavigate.jsx
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CircleMarker, MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+function distanceKm(positions) {
+  if (!Array.isArray(positions) || positions.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < positions.length; i++) {
+    const [lat1, lng1] = positions[i - 1];
+    const [lat2, lng2] = positions[i];
+    const latDiff = (lat2 - lat1) * 111.32;
+    const lngScale = Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
+    const lngDiff = (lng2 - lng1) * 111.32 * lngScale;
+    total += Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+  }
+  return total;
+}
+
+function isSamePosition(a, b) {
+  if (!a || !b) return false;
+  return Math.abs(a[0] - b[0]) < 0.0001 && Math.abs(a[1] - b[1]) < 0.0001;
+}
+
+function RecenterNavigation({ position }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!position) return;
+    map.setView(position, map.getZoom(), { animate: true });
+  }, [map, position]);
+
+  return null;
+}
 
 const locationMarkerIcon = L.divIcon({
   html: `
@@ -36,15 +66,66 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
     position: [14.4386, 101.3724] 
   };
 
-  // จำลองพิกัดปัจจุบันของผู้ใช้ (ห่างจากจุดหมายนิดหน่อย)
-  const currentLocation = [target.position[0] - 0.005, target.position[1] - 0.005];
-  
-  // จำลองเส้นทาง (Route) จากจุดปัจจุบันไปจุดหมาย (ทำเส้นหักมุมนิดหน่อยให้ดูสมจริง)
-  const routePositions = [
-    currentLocation,
-    [currentLocation[0] + 0.004, currentLocation[1]], // จุดเลี้ยว
-    target.position
-  ];
+  const [livePosition, setLivePosition] = useState(target.currentPosition || null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return undefined;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLivePosition([position.coords.latitude, position.coords.longitude]);
+      },
+      () => {
+        // Keep the last valid position if GPS update fails.
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 5000,
+      },
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
+  // If a full route is provided (3+ points), use it directly in navigation map.
+  const hasProvidedRoute = Array.isArray(target.routePositions) && target.routePositions.length >= 2;
+  const shouldPrependCurrentToRoute = hasProvidedRoute
+    && Boolean(livePosition || target.currentPosition)
+    && !isSamePosition(livePosition || target.currentPosition, target.routePositions[0]);
+
+  const routePositions = useMemo(() => {
+    const currentPosition = livePosition || target.currentPosition || null;
+
+    if (hasProvidedRoute) {
+      if (shouldPrependCurrentToRoute && currentPosition) {
+        return [currentPosition, ...target.routePositions];
+      }
+      return target.routePositions;
+    }
+
+    if (currentPosition) {
+      return [currentPosition, target.position];
+    }
+
+    return [
+      [target.position[0] - 0.005, target.position[1] - 0.005],
+      [target.position[0] - 0.001, target.position[1] - 0.005],
+      target.position,
+    ];
+  }, [hasProvidedRoute, livePosition, shouldPrependCurrentToRoute, target.currentPosition, target.position, target.routePositions]);
+
+  const currentLocation = routePositions[0];
+  const finalDestination = routePositions[routePositions.length - 1];
+
+  const remainingKm = distanceKm(routePositions);
+  const etaMinutes = Math.max(1, Math.round((remainingKm / 4.5) * 60));
+  const distanceDisplay = `${remainingKm.toFixed(1)} KM`;
+  const etaDisplay = etaMinutes >= 60
+    ? `${Math.floor(etaMinutes / 60)} HR ${etaMinutes % 60} MIN`
+    : `${etaMinutes} MIN`;
 
   return (
     <div className="fixed inset-0 z-[60] bg-black text-slate-200 font-sans flex flex-col animate-[fadeIn_0.3s_ease-out]">
@@ -62,6 +143,7 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
           className="w-full h-full"
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <RecenterNavigation position={currentLocation} />
           
           {/* เส้นทางนำทาง (Route Line) */}
           <Polyline 
@@ -73,8 +155,24 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
             className="animate-[dash_20s_linear_infinite]"
           />
 
+          {hasProvidedRoute && routePositions.map((position, index) => (
+            <CircleMarker
+              key={`nav-route-point-${index}`}
+              center={position}
+              radius={5}
+              pathOptions={{ color: '#fca5a5', fillColor: '#ef4444', fillOpacity: 0.9 }}
+            >
+              <Popup>
+                {shouldPrependCurrentToRoute && index === 0
+                  ? 'Current Position'
+                  : (target.pointLabels && target.pointLabels[shouldPrependCurrentToRoute ? index - 1 : index])
+                    || `Point ${shouldPrependCurrentToRoute ? index : index + 1}`}
+              </Popup>
+            </CircleMarker>
+          ))}
+
           {/* จุดหมายปลายทาง */}
-          <Marker position={target.position} icon={locationMarkerIcon} />
+          <Marker position={finalDestination} icon={locationMarkerIcon} />
           
           {/* ตำแหน่งปัจจุบัน (ตัวเรา) */}
           <Marker position={currentLocation} icon={currentLocationIcon} />
@@ -108,11 +206,11 @@ export function FieldOpsNavigate({ destination, onEndNavigation = () => {} }) {
           {/* Stats Box */}
           <div className="bg-[#111820]/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
             <div>
-              <p className="text-3xl font-black text-emerald-400 font-mono leading-none">{target.eta}</p>
+              <p className="text-3xl font-black text-emerald-400 font-mono leading-none">{etaDisplay}</p>
               <p className="text-xs text-slate-400 font-bold tracking-wide mt-1">ESTIMATED TIME</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black text-white font-mono leading-none">{target.distance}</p>
+              <p className="text-2xl font-black text-white font-mono leading-none">{distanceDisplay}</p>
               <p className="text-xs text-slate-400 font-bold tracking-wide mt-1">REMAINING</p>
             </div>
           </div>

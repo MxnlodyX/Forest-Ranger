@@ -18,6 +18,12 @@ const normalizeRole = (role) => {
     return role;
 };
 
+const getStatusPillClass = (status) => {
+    if (status === 'On Duty') return 'bg-emerald-100 text-emerald-700';
+    if (status === 'Active') return 'bg-amber-100 text-amber-700';
+    return 'bg-gray-100 text-gray-700';
+};
+
 export function HRMDashboard() {
     const [staffList, setStaffList] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -92,18 +98,18 @@ export function HRMDashboard() {
         e.preventDefault();
 
         if (isUploadingImage) {
-            showToast('กำลังอัปโหลดรูปภาพ กรุณารอสักครู่...', 'error');
+            showToast('Uploading image, please wait...', 'error');
             return;
         }
 
         // ตรวจสอบฟิลด์บังคับ
         if (!formData.name || !formData.username || !formData.title || !formData.role) {
-            showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', 'error');
+            showToast('Please complete all required fields.', 'error');
             return;
         }
 
         if (modalType === 'ADD' && !formData.password) {
-            showToast('กรุณากำหนดรหัสผ่านสำหรับพนักงานใหม่', 'error');
+            showToast('Please set a password for the new staff member.', 'error');
             return;
         }
 
@@ -123,19 +129,19 @@ export function HRMDashboard() {
 
             if (modalType === 'ADD') {
                 await api.post('/api/add_new_staff', payload);
-                showToast('เพิ่มพนักงานสำเร็จ!', 'success');
+                showToast('Staff member added successfully!', 'success');
             } else if (modalType === 'EDIT') {
                 await api.put('/api/edit_staff', {
                     ...payload,
                     staff_id: selectedStaff.id,
                 });
-                showToast('อัปเดตข้อมูลพนักงานสำเร็จ!', 'success');
+                showToast('Staff member updated successfully!', 'success');
             }
-            
+
             fetchStaff();
             closeModal();
         } catch (error) {
-            showToast(error.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            showToast(error.message || 'Unable to save data', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -146,11 +152,11 @@ export function HRMDashboard() {
         try {
             setIsSubmitting(true);
             await api.delete(`/api/delete_staff/${selectedStaff.id}`);
-            showToast('ลบพนักงานสำเร็จ', 'success');
+            showToast('Staff member deleted successfully', 'success');
             fetchStaff();
             closeModal();
         } catch (error) {
-            showToast(error.message || 'ไม่สามารถลบข้อมูลได้', 'error');
+            showToast(error.message || 'Unable to delete data', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -168,6 +174,7 @@ export function HRMDashboard() {
         total: staffList.length,
         onDuty: staffList.filter((staff) => staff.status === 'On Duty').length,
         offDuty: staffList.filter((staff) => staff.status === 'Off Duty').length,
+        active: staffList.filter((staff) => staff.status === 'Active').length,
         backoffice: staffList.filter((staff) => normalizeRole(staff.role) === 'Back-Office').length,
     };
 
@@ -180,13 +187,13 @@ export function HRMDashboard() {
 
         const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp'];
         if (!allowedMimeTypes.includes(file.type)) {
-            showToast('รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP เท่านั้น', 'error');
+            showToast('Only JPG, PNG, or WEBP files are supported.', 'error');
             e.target.value = '';
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            showToast('ขนาดไฟล์ต้องไม่เกิน 5MB', 'error');
+            showToast('File size must be 5MB or less.', 'error');
             e.target.value = '';
             return;
         }
@@ -197,10 +204,10 @@ export function HRMDashboard() {
             form.append('image', file);
 
             const result = await api.postForm('/api/upload_profile_image', form);
-            
+
             setFormData((prev) => ({ ...prev, image: result.image_url }));
         } catch (error) {
-            showToast(error.message || 'ไม่สามารถอัปโหลดรูปภาพได้', 'error');
+            showToast(error.message || 'Unable to upload image', 'error');
         } finally {
             setIsUploadingImage(false);
             e.target.value = '';
@@ -213,19 +220,19 @@ export function HRMDashboard() {
                 <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Staff Management (HRM)</h1>
-                        <p className="mt-1 text-sm text-gray-500">จัดการรายชื่อเจ้าหน้าที่ สิทธิ์การใช้งาน และสถานะปัจจุบัน</p>
+                        <p className="mt-1 text-sm text-gray-500">Manage staff records, access roles, and current status.</p>
                     </div>
                     <Button onClick={() => openModal('ADD')} className="gap-2">
                         <Plus size={16} />
-                        ลงทะเบียนพนักงานใหม่
+                        Register New Staff
                     </Button>
                 </header>
 
-                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                         <div className="mb-2 flex items-center gap-2 text-gray-500">
                             <Users size={16} />
-                            <p className="text-sm font-medium">เจ้าหน้าที่ทั้งหมด</p>
+                            <p className="text-sm font-medium">Total Staff</p>
                         </div>
                         <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
                     </div>
@@ -242,6 +249,13 @@ export function HRMDashboard() {
                             <p className="text-sm font-medium">Off Duty</p>
                         </div>
                         <p className="text-3xl font-bold text-gray-700">{stats.offDuty}</p>
+                    </div>
+                    <div className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm">
+                        <div className="mb-2 flex items-center gap-2 text-amber-600">
+                            <ShieldCheck size={16} />
+                            <p className="text-sm font-medium">Active</p>
+                        </div>
+                        <p className="text-3xl font-bold text-amber-700">{stats.active}</p>
                     </div>
                     <div className="rounded-xl border border-blue-200 bg-white p-4 shadow-sm">
                         <div className="mb-2 flex items-center gap-2 text-blue-600">
@@ -260,7 +274,7 @@ export function HRMDashboard() {
                         <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input
                             type="text"
-                            placeholder="ค้นหาชื่อ, ตำแหน่ง, บทบาท หรือพื้นที่..."
+                            placeholder="Search by name, title, role, or area..."
                             className="h-10 w-full rounded-lg border border-gray-300 py-2 pl-10 pr-20 text-sm text-gray-800 outline-none transition focus:border-blue-500"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -283,24 +297,24 @@ export function HRMDashboard() {
                             <table className="min-w-full text-left text-sm">
                                 <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                                     <tr>
-                                        <th className="px-4 py-3 font-semibold">เจ้าหน้าที่</th>
-                                        <th className="px-4 py-3 font-semibold">บทบาท</th>
-                                        <th className="px-4 py-3 font-semibold">สถานะ</th>
-                                        <th className="px-4 py-3 font-semibold">ติดต่อ</th>
-                                        <th className="px-4 py-3 text-center font-semibold">จัดการ</th>
+                                        <th className="px-4 py-3 font-semibold">Staff</th>
+                                        <th className="px-4 py-3 font-semibold">Role</th>
+                                        <th className="px-4 py-3 font-semibold">Status</th>
+                                        <th className="px-4 py-3 font-semibold">Contact</th>
+                                        <th className="px-4 py-3 text-center font-semibold">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {isLoading ? (
                                         <tr>
                                             <td className="px-4 py-10 text-center text-gray-400" colSpan={5}>
-                                                กำลังโหลดข้อมูลพนักงาน...
+                                                Loading staff data...
                                             </td>
                                         </tr>
                                     ) : filteredStaff.length === 0 ? (
                                         <tr>
                                             <td className="px-4 py-10 text-center text-gray-500" colSpan={5}>
-                                                ไม่พบข้อมูลพนักงาน
+                                                No staff data found.
                                             </td>
                                         </tr>
                                     ) : (
@@ -327,16 +341,20 @@ export function HRMDashboard() {
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-700">{staff.role}</td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${staff.status === 'On Duty' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${staff.status === 'On Duty'
+                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                        : staff.status === 'Active'
+                                                            ? 'bg-amber-100 text-amber-700'
+                                                            : 'bg-gray-100 text-gray-700'}`}>
                                                         {staff.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-700">{staff.contact || '-'}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <button onClick={(e) => { e.stopPropagation(); openModal('VIEW', staff); }} className="rounded-md p-1.5 text-gray-500 transition hover:bg-blue-100 hover:text-blue-700" title="ดูข้อมูล" type="button"><Eye size={15} /></button>
-                                                        <button onClick={(e) => { e.stopPropagation(); openModal('EDIT', staff); }} className="rounded-md p-1.5 text-gray-500 transition hover:bg-amber-100 hover:text-amber-700" title="แก้ไข" type="button"><Edit2 size={15} /></button>
-                                                        <button onClick={(e) => { e.stopPropagation(); openModal('DELETE', staff); }} className="rounded-md p-1.5 text-red-500 transition hover:bg-red-50 hover:text-red-700" title="ลบ" type="button"><Trash2 size={15} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); openModal('VIEW', staff); }} className="rounded-md p-1.5 text-gray-500 transition hover:bg-blue-100 hover:text-blue-700" title="View" type="button"><Eye size={15} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); openModal('EDIT', staff); }} className="rounded-md p-1.5 text-gray-500 transition hover:bg-amber-100 hover:text-amber-700" title="Edit" type="button"><Edit2 size={15} /></button>
+                                                        <button onClick={(e) => { e.stopPropagation(); openModal('DELETE', staff); }} className="rounded-md p-1.5 text-red-500 transition hover:bg-red-50 hover:text-red-700" title="Delete" type="button"><Trash2 size={15} /></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -350,7 +368,7 @@ export function HRMDashboard() {
                     <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-4">
                         <h2 className="mb-4 text-lg font-semibold text-gray-900">Person Details</h2>
                         {!selectedStaffDetail ? (
-                            <p className="text-sm text-gray-500">เลือกพนักงานจากตารางทางซ้ายเพื่อดูรายละเอียด</p>
+                            <p className="text-sm text-gray-500">Select a staff member from the table to view details.</p>
                         ) : (
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3">
@@ -388,7 +406,7 @@ export function HRMDashboard() {
 
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</p>
-                                    <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${selectedStaffDetail.status === 'On Duty' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                                    <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusPillClass(selectedStaffDetail.status)}`}>
                                         {selectedStaffDetail.status || '-'}
                                     </span>
                                 </div>
@@ -407,10 +425,10 @@ export function HRMDashboard() {
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900">
-                                    {modalType === 'ADD' && 'ลงทะเบียนพนักงานใหม่'}
-                                    {modalType === 'EDIT' && 'แก้ไขข้อมูลพนักงาน'}
-                                    {modalType === 'VIEW' && 'ข้อมูลส่วนตัวพนักงาน'}
-                                    {modalType === 'DELETE' && 'ยืนยันการลบข้อมูล'}
+                                    {modalType === 'ADD' && 'Register New Staff'}
+                                    {modalType === 'EDIT' && 'Edit Staff Details'}
+                                    {modalType === 'VIEW' && 'Staff Profile'}
+                                    {modalType === 'DELETE' && 'Confirm Deletion'}
                                 </h2>
                             </div>
                             <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full"><X size={18} /></button>
@@ -420,7 +438,7 @@ export function HRMDashboard() {
                         {(modalType === 'ADD' || modalType === 'EDIT') && (
                             <form onSubmit={handleSubmit} className="overflow-y-auto custom-scrollbar flex-1">
                                 <div className="p-6 space-y-6">
-                                    
+
                                     {/* --- Image Upload --- */}
                                     <div className="flex flex-col items-center">
                                         <div className="relative w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden hover:bg-gray-100 hover:border-emerald-400 transition-all cursor-pointer group">
@@ -434,19 +452,19 @@ export function HRMDashboard() {
                                             )}
                                             <input type="file" accept="image/png, image/jpeg, image/webp" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageChange} disabled={isUploadingImage} />
                                         </div>
-                                        {isUploadingImage && <p className="text-xs text-emerald-600 mt-2">กำลังอัปโหลด...</p>}
+                                        {isUploadingImage && <p className="text-xs text-emerald-600 mt-2">Uploading...</p>}
                                     </div>
 
                                     {/* --- Account Setup --- */}
                                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
-                                        <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider">บัญชีผู้ใช้งาน (Login)</h4>
+                                        <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider">User Account (Login)</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-gray-600 mb-1">Username *</label>
-                                                <input required type="text" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="ตั้งชื่อผู้ใช้งาน" />
+                                                <input required type="text" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="Set username" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">Password {modalType === 'EDIT' && '(เว้นว่างถ้าไม่แก้)'}</label>
+                                                <label className="block text-xs font-medium text-gray-600 mb-1">Password {modalType === 'EDIT' && '(leave blank to keep unchanged)'}</label>
                                                 <input type="password" required={modalType === 'ADD'} value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="••••••••" />
                                             </div>
                                         </div>
@@ -454,45 +472,46 @@ export function HRMDashboard() {
 
                                     {/* --- Info --- */}
                                     <div className="space-y-4">
-                                        <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider border-b pb-2">ข้อมูลเบื้องต้น</h4>
+                                        <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider border-b pb-2">Basic Information</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">ชื่อ-สกุล *</label>
-                                                <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="ชื่อ นามสกุล" />
+                                                <label className="block text-xs font-medium text-gray-600 mb-1">Full Name *</label>
+                                                <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="Full name" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">เบอร์ติดต่อ</label>
+                                                <label className="block text-xs font-medium text-gray-600 mb-1">Contact Number</label>
                                                 <input type="text" value={formData.contact} onChange={e => setFormData({ ...formData, contact: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="08X-XXX-XXXX" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">ตำแหน่ง (Title) *</label>
-                                                <input required type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="เช่น Ranger" />
+                                                <label className="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+                                                <input required type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="e.g., Ranger" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">พื้นที่รับผิดชอบ</label>
-                                                <input type="text" value={formData.area} onChange={e => setFormData({ ...formData, area: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="เช่น เขต 1" />
+                                                <label className="block text-xs font-medium text-gray-600 mb-1">Assigned Area</label>
+                                                <input type="text" value={formData.area} onChange={e => setFormData({ ...formData, area: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30" placeholder="e.g., Zone 1" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">ระดับสิทธิ์ (Role) *</label>
+                                                <label className="block text-xs font-medium text-gray-600 mb-1">Access Role (Role) *</label>
                                                 <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30">
-                                                    <option value="Field-Ops">Field-Ops (ภาคสนาม)</option>
-                                                    <option value="Back-Office">Back-Office (ส่วนกลาง)</option>
+                                                    <option value="Field-Ops">Field-Ops (Field Operations)</option>
+                                                    <option value="Back-Office">Back-Office (HQ)</option>
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-600 mb-1">สถานะปัจจุบัน</label>
+                                                <label className="block text-xs font-medium text-gray-600 mb-1">Current Status</label>
                                                 <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full border-gray-300 border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30">
-                                                    <option value="On Duty">🟢 On Duty (เข้าเวร)</option>
-                                                    <option value="Off Duty">⚪ Off Duty (ออกเวร)</option>
+                                                    <option value="On Duty">🟢 On Duty (On shift)</option>
+                                                    <option value="Off Duty">⚪ Off Duty (Off shift)</option>
+                                                    <option value="Active">🟠 Active (Available)</option>
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 shrink-0">
-                                    <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100">ยกเลิก</button>
+                                    <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100">Cancel</button>
                                     <button type="submit" disabled={isSubmitting || isUploadingImage} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-50">
-                                        {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+                                        {isSubmitting ? 'Saving...' : 'Save'}
                                     </button>
                                 </div>
                             </form>
@@ -522,12 +541,12 @@ export function HRMDashboard() {
                                         <div><p className="text-gray-400 text-xs mb-1">Contact</p><p className="font-semibold">{selectedStaff.contact}</p></div>
                                         <div className="col-span-2">
                                             <p className="text-gray-400 text-xs mb-1">Status</p>
-                                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${selectedStaff.status === 'On Duty' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-700'}`}>{selectedStaff.status}</span>
+                                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${getStatusPillClass(selectedStaff.status)}`}>{selectedStaff.status}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="p-4 border-t border-gray-100 flex justify-end bg-gray-50">
-                                    <button onClick={closeModal} className="px-6 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 text-sm font-medium">ปิด</button>
+                                    <button onClick={closeModal} className="px-6 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 text-sm font-medium">Close</button>
                                 </div>
                             </div>
                         )}
@@ -539,14 +558,14 @@ export function HRMDashboard() {
                                     <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4 text-red-500">
                                         <Trash2 size={32} />
                                     </div>
-                                    <p className="text-gray-600 mb-2">คุณแน่ใจหรือไม่ที่จะลบพนักงาน:</p>
+                                    <p className="text-gray-600 mb-2">Are you sure you want to delete this staff member:</p>
                                     <p className="text-xl font-bold text-gray-900">{selectedStaff.name}</p>
-                                    <p className="text-sm text-red-500 mt-4">การกระทำนี้ไม่สามารถย้อนกลับได้</p>
+                                    <p className="text-sm text-red-500 mt-4">This action cannot be undone.</p>
                                 </div>
                                 <div className="p-4 border-t border-gray-100 flex justify-center gap-3 bg-gray-50">
-                                    <button onClick={closeModal} className="px-6 py-2 border border-gray-300 bg-white rounded-lg hover:bg-gray-100 text-sm font-medium">ยกเลิก</button>
+                                    <button onClick={closeModal} className="px-6 py-2 border border-gray-300 bg-white rounded-lg hover:bg-gray-100 text-sm font-medium">Cancel</button>
                                     <button onClick={handleDelete} disabled={isSubmitting} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium shadow-sm">
-                                        {isSubmitting ? 'กำลังลบ...' : 'ยืนยันการลบ'}
+                                        {isSubmitting ? 'Deleting...' : 'Confirm Delete'}
                                     </button>
                                 </div>
                             </div>
@@ -560,7 +579,7 @@ export function HRMDashboard() {
                 <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 z-50 text-white ${toastState.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`}>
                     <CheckCircle size={20} className={toastState.type === 'error' ? 'text-red-200' : 'text-emerald-200'} />
                     <div>
-                        <p className="text-sm font-bold">{toastState.type === 'error' ? 'ข้อผิดพลาด' : 'สำเร็จ'}</p>
+                        <p className="text-sm font-bold">{toastState.type === 'error' ? 'Error' : 'Success'}</p>
                         <p className="text-xs">{toastState.message}</p>
                     </div>
                 </div>

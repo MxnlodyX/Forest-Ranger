@@ -46,12 +46,22 @@ export function TaskAssignPage() {
   const fetchLocations = useCallback(() => api.get('/api/locations'), []);
 
   const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useApi(fetchTasks);
-  const { data: staffData }    = useApi(fetchStaff);
-  const { data: locationData } = useApi(fetchLocations);
+  const { data: staffData, loading: staffLoading, error: staffError, refetch: refetchStaff } = useApi(fetchStaff);
+  const {
+    data: locationData,
+    loading: locationsLoading,
+    error: locationsError,
+    refetch: refetchLocations,
+  } = useApi(fetchLocations);
 
   const taskList        = tasksData    ?? [];
   const staffOptions    = staffData    ?? [];
   const locationOptions = locationData ?? [];
+
+  const refreshAssignmentSources = useCallback(() => {
+    refetchStaff();
+    refetchLocations();
+  }, [refetchStaff, refetchLocations]);
 
   const stats = useMemo(() => {
     const todo = taskList.filter((t) => t.status === 'Todo').length;
@@ -96,6 +106,7 @@ export function TaskAssignPage() {
   };
 
   const openCreateForm = () => {
+    refreshAssignmentSources();
     setEditingTaskId(null);
     setFormData(emptyForm);
     setFormError('');
@@ -103,6 +114,7 @@ export function TaskAssignPage() {
   };
 
   const openEditForm = (task) => {
+    refreshAssignmentSources();
     setEditingTaskId(task.task_id);
     setFormData({
       task_title:    task.task_title   ?? '',
@@ -170,6 +182,11 @@ export function TaskAssignPage() {
       await refetchTasks();
       if (selectedTaskId === taskId) setSelectedTaskId(null);
     } catch (err) {
+      if ((err.message || '').toLowerCase().includes('task not found')) {
+        await refetchTasks();
+        if (selectedTaskId === taskId) setSelectedTaskId(null);
+        return;
+      }
       window.alert(err.message || 'Failed to delete task.');
     }
   };
@@ -511,6 +528,8 @@ export function TaskAssignPage() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
                   >
                     <option value="">— Unassigned —</option>
+                    {staffLoading && <option value="" disabled>Loading staff from API...</option>}
+                    {staffError && <option value="" disabled>Failed to load staff from API</option>}
                     {staffOptions.map((s) => (
                       <option key={s.staff_id} value={s.staff_id}>
                         {s.full_name} ({s.title_role})
@@ -527,9 +546,14 @@ export function TaskAssignPage() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
                   >
                     <option value="">— No location —</option>
+                    {locationsLoading && <option value="" disabled>Loading locations from API...</option>}
+                    {locationsError && <option value="" disabled>Failed to load locations from API</option>}
+                    {!locationsLoading && !locationsError && locationOptions.length === 0 && (
+                      <option value="" disabled>No locations available from API</option>
+                    )}
                     {locationOptions.map((loc) => (
                       <option key={loc.location_id} value={loc.location_id}>
-                        {loc.location_name} — {loc.sector}
+                        {loc.location_name || `Location #${loc.location_id}`} — {loc.sector || 'No sector'}
                       </option>
                     ))}
                   </select>

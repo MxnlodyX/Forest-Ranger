@@ -4,7 +4,7 @@ import { useAppContext } from '../../context/useAppContext';
 import { api, resolveMediaUrl } from '../../services/api';
 import {
     LayoutDashboard, Users, Archive, BarChart, Map, FileText, LogOut, ScanSearch,
-		Book, ClipboardList
+        Book, ClipboardList, Flame
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -21,6 +21,7 @@ export function Sidebar() {
 			{ path: '/image-classification', name: 'Image Classification', icon: ScanSearch },
         { path: '/knowledge-management', name: 'Knowledge Management', icon: Book },
         { path: '/monthly-report', name: 'Monthly Report', icon: ClipboardList },
+        { path: '/heatmap-management', name: 'HeatMap Management', icon: Flame },
     ];
 
     const handleSignOut = async () => {

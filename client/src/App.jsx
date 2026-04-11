@@ -13,6 +13,7 @@ import { ReportManagementPage } from './pages/backoffice/ReportManagementPage';
 import { ImageClassificationPage } from './pages/backoffice/ImageClassificationPage';
 import { KnowledgeManagementPage } from './pages/backoffice/KnowledgeManagementPage';
 import { MonthlyReportPage } from './pages/backoffice/MonthlyReportPage';
+import { HeatMapManagementPage } from './pages/backoffice/HeatMapManagementPage';
 
 
 import { FieldOpsHomePage } from './pages/field-ops/FieldOpsHomePage';
@@ -44,6 +45,7 @@ function App() {
 						<Route path="/image-classification" element={<ImageClassificationPage />} />
 						<Route path="/knowledge-management" element={<KnowledgeManagementPage />} />
 					<Route path="/monthly-report" element={<MonthlyReportPage />} />
+            <Route path="/heatmap-management" element={<HeatMapManagementPage />} />
 
           </Route>
         </Route>

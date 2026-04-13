@@ -105,3 +105,93 @@ def create_vilager_alert():
         return jsonify({"error": f"database error: {exc}"}), 400
     except Exception as exc:
         return jsonify({"error": f"internal server error: {exc}"}), 500
+
+@vilager_report_bp.route('/api/alerts', methods=['GET'])
+def list_alerts():
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT pa.*, l.location_name, s.full_name as handler_name
+                FROM public_alert pa
+                LEFT JOIN location l ON pa.location_id = l.location_id
+                LEFT JOIN staff s ON pa.handled_by = s.staff_id
+                ORDER BY pa.created_at DESC
+            """)
+            rows = cursor.fetchall()
+        conn.close()
+        return jsonify([_serialize_row(r) for r in rows]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@vilager_report_bp.route('/api/alerts/<int:alert_id>', methods=['GET'])
+def get_alert(alert_id):
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT pa.*, l.location_name, s.full_name as handler_name
+                FROM public_alert pa
+                LEFT JOIN location l ON pa.location_id = l.location_id
+                LEFT JOIN staff s ON pa.handled_by = s.staff_id
+                WHERE pa.alert_id = %s
+            """, (alert_id,))
+            row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Alert not found"}), 404
+        return jsonify(_serialize_row(row)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@vilager_report_bp.route('/api/alerts/<int:alert_id>', methods=['PUT'])
+def update_alert(alert_id):
+    payload = request.get_json(silent=True) or {}
+    status = payload.get('status')
+    staff_comments = payload.get('staff_comments')
+    handled_by = payload.get('handled_by')
+
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM public_alert WHERE alert_id = %s", (alert_id,))
+            if not cursor.fetchone():
+                conn.close()
+                return jsonify({"error": "Alert not found"}), 404
+
+            updates = []
+            params = []
+            if status:
+                updates.append("status = %s")
+                params.append(status)
+            if staff_comments is not None:
+                updates.append("staff_comments = %s")
+                params.append(staff_comments)
+            if handled_by:
+                updates.append("handled_by = %s")
+                params.append(handled_by)
+
+            if not updates:
+                conn.close()
+                return jsonify({"message": "No changes provided"}), 400
+
+            params.append(alert_id)
+            query = f"UPDATE public_alert SET {', '.join(updates)} WHERE alert_id = %s"
+            cursor.execute(query, tuple(params))
+            conn.commit()
+        conn.close()
+        return jsonify({"message": "Alert updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@vilager_report_bp.route('/api/alerts/<int:alert_id>', methods=['DELETE'])
+def delete_alert(alert_id):
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM public_alert WHERE alert_id = %s", (alert_id,))
+            conn.commit()
+        conn.close()
+        return jsonify({"message": "Alert deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

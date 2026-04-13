@@ -9,7 +9,7 @@ import { Button } from '../../components/ui';
 import { api } from '../../services/api';
 
 const DEFAULT_CENTER = [14.4386, 101.3724];
-const EVENT_TYPE_OPTIONS = ['Fire', 'Emergency', 'Wildlife', 'Damage', 'Trap', 'Illegal Logging'];
+const EVENT_TYPE_OPTIONS = ['Fire', 'Emergency', 'Wildlife', 'Damage', 'Poaching', 'Illegal Logging'];
 
 function HeatLayer({ points }) {
   const map = useMap();

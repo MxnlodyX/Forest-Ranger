@@ -59,52 +59,47 @@ def migrate_db():
 def create_vilager_alert():
     payload = request.get_json(silent=True) or {}
     
-    incident_type = payload.get('incident_type')
-    other_detail = payload.get('other_detail')
-    urgency = payload.get('urgency') or 'normal'
-    location_id = payload.get('location_id')
-    reporter_name = payload.get('reporter_name')
-    reporter_phone = payload.get('reporter_phone')
-    reporter_email = payload.get('reporter_email')
-    description = payload.get('description')
+    # Check if bulk (list) or single (dict)
+    is_bulk = isinstance(payload, list)
+    alerts_to_process = payload if is_bulk else [payload]
+    results = []
 
-    # Basic validation
-    if not incident_type:
-        return jsonify({"error": "incident_type is required"}), 400
-    if not reporter_phone:
-        return jsonify({"error": "reporter_phone is required"}), 400
-    
-    # Optional: validate location_id if provided
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            if location_id:
-                cursor.execute("SELECT 1 FROM location WHERE location_id = %s", (location_id,))
-                if not cursor.fetchone():
-                    conn.close()
-                    return jsonify({"error": "location_id not found"}), 404
+            for item in alerts_to_process:
+                incident_type = item.get('incident_type')
+                other_detail = item.get('other_detail')
+                urgency = item.get('urgency') or 'normal'
+                location_id = item.get('location_id')
+                reporter_name = item.get('reporter_name')
+                reporter_phone = item.get('reporter_phone')
+                reporter_email = item.get('reporter_email')
+                description = item.get('description')
 
-            cursor.execute(
-                """
-                INSERT INTO public_alert 
+                if not incident_type or not reporter_phone:
+                    if is_bulk: continue # skip invalid ones in bulk
+                    else: return jsonify({"error": "incident_type and reporter_phone are required"}), 400
+
+                cursor.execute(
+                    """
+                    INSERT INTO public_alert 
+                        (incident_type, other_detail, urgency, location_id, 
+                         reporter_name, reporter_phone, reporter_email, description, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Pending')
+                    """,
                     (incident_type, other_detail, urgency, location_id, 
-                     reporter_name, reporter_phone, reporter_email, description, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Pending')
-                """,
-                (incident_type, other_detail, urgency, location_id, 
-                 reporter_name, reporter_phone, reporter_email, description)
-            )
-            alert_id = cursor.lastrowid
+                     reporter_name, reporter_phone, reporter_email, description)
+                )
+                alert_id = cursor.lastrowid
+                cursor.execute("SELECT * FROM public_alert WHERE alert_id = %s", (alert_id,))
+                results.append(_serialize_row(cursor.fetchone()))
+            
             conn.commit()
-
-            cursor.execute("SELECT * FROM public_alert WHERE alert_id = %s", (alert_id,))
-            row = cursor.fetchone()
         conn.close()
-        return jsonify(_serialize_row(row)), 201
-    except pymysql.MySQLError as exc:
-        return jsonify({"error": f"database error: {exc}"}), 400
+        return jsonify(results if is_bulk else results[0]), 201
     except Exception as exc:
-        return jsonify({"error": f"internal server error: {exc}"}), 500
+        return jsonify({"error": str(exc)}), 500
 
 @vilager_report_bp.route('/api/alerts', methods=['GET'])
 def list_alerts():
@@ -112,7 +107,7 @@ def list_alerts():
         conn = get_db_connection()
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT pa.*, l.location_name, s.full_name as handler_name
+                SELECT pa.*, l.location_name, l.coordinates, s.full_name as handler_name
                 FROM public_alert pa
                 LEFT JOIN location l ON pa.location_id = l.location_id
                 LEFT JOIN staff s ON pa.handled_by = s.staff_id

@@ -13,8 +13,17 @@ import {
   Phone,
   Mail,
   MapPin,
-  AlertCircle
+  AlertCircle,
+  Map as MapIcon,
+  List as ListIcon,
+  Flame,
+  Droplets,
+  PawPrint,
+  Info
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { api } from '../../services/api';
 import { useAppContext } from '../../context/useAppContext';
 
@@ -41,6 +50,53 @@ const getUrgencyColor = (urgency) => {
   }
 };
 
+const getIncidentIcon = (type) => {
+  switch (type) {
+    case 'fire': return <Flame size={16} />;
+    case 'flood': return <Droplets size={16} />;
+    case 'wildlife': return <PawPrint size={16} />;
+    default: return <Info size={16} />;
+  }
+};
+
+const getMarkerIcon = (alertsAtLocation) => {
+  if (!Array.isArray(alertsAtLocation)) return L.divIcon({ html: '?' });
+
+  // Find highest urgency in the group
+  const hasEmergency = alertsAtLocation.some(a => a.urgency === 'emergency');
+  const hasUrgent = alertsAtLocation.some(a => a.urgency === 'urgent');
+  
+  let color = '#10b981'; // normal
+  let type = alertsAtLocation[0]?.incident_type || 'other'; // primary type
+  
+  if (hasEmergency) color = '#ef4444';
+  else if (hasUrgent) color = '#f59e0b';
+
+  const count = alertsAtLocation.length;
+  const showBadge = count > 1;
+
+  const html = `
+    <div class="relative flex items-center justify-center">
+      ${hasEmergency ? `<div class="absolute w-10 h-10 rounded-full opacity-20 animate-ping" style="background-color: ${color}"></div>` : ''}
+      <div class="relative w-10 h-10 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg" style="background-color: ${color}">
+        ${type === 'fire' ? '🔥' : type === 'flood' ? '🌊' : type === 'wildlife' ? '🐾' : '⚠️'}
+      </div>
+      ${showBadge ? `
+        <div class="absolute -top-1 -right-1 bg-white text-gray-900 border-2 border-gray-800 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+          ${count}
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'custom-marker-icon',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+};
+
 export function PublicAlertsPage() {
   const { currentUser } = useAppContext();
   const [alerts, setAlerts] = useState([]);
@@ -49,9 +105,10 @@ export function PublicAlertsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [urgencyFilter, setUrgencyFilter] = useState('All');
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'map'
   
   const [selectedAlertId, setSelectedAlertId] = useState(null);
-  const [modalMode, setModalMode] = useState(null); // 'view' | 'edit' | 'delete'
+  const [modalMode, setModalMode] = useState(null); // 'view' | 'edit'
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -63,7 +120,7 @@ export function PublicAlertsPage() {
     try {
       setLoading(true);
       const data = await api.get('/api/alerts');
-      setAlerts(data);
+      setAlerts(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message || 'Failed to fetch public alerts');
     } finally {
@@ -92,6 +149,22 @@ export function PublicAlertsPage() {
     });
   }, [alerts, searchQuery, statusFilter, urgencyFilter]);
 
+  // Group alerts by coordinates for map markers
+  const groupedAlerts = useMemo(() => {
+    const groups = {};
+    filteredAlerts.forEach(alert => {
+      const coords = alert.coordinates;
+      if (!coords) return;
+      if (!groups[coords]) groups[coords] = [];
+      groups[coords].push(alert);
+    });
+    return Object.entries(groups).map(([coords, alertsAtLoc]) => ({
+      coords,
+      alerts: alertsAtLoc,
+      location_name: alertsAtLoc[0].location_name
+    }));
+  }, [filteredAlerts]);
+
   const selectedAlert = useMemo(
     () => alerts.find(a => a.alert_id === selectedAlertId) || null,
     [alerts, selectedAlertId]
@@ -115,7 +188,7 @@ export function PublicAlertsPage() {
   };
 
   const handleUpdate = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     try {
       setIsSubmitting(true);
       await api.put(`/api/alerts/${selectedAlertId}`, {
@@ -156,191 +229,308 @@ export function PublicAlertsPage() {
     };
   }, [alerts]);
 
+  const parseCoords = (coordsStr) => {
+    if (!coordsStr) return null;
+    const parts = coordsStr.split(',').map(p => parseFloat(p.trim()));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      return [parts[0], parts[1]];
+    }
+    return null;
+  };
+
+  const mapCenter = [14.4386, 101.3724];
+
   return (
-    <section className="p-6 md:p-8">
-      <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <section className="p-6 md:p-8 flex flex-col h-screen overflow-hidden">
+      <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Public Alerts Management</h1>
           <p className="mt-1 text-sm text-gray-500">Manage emergency reports submitted by villagers and the public.</p>
         </div>
+
+        <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm shrink-0">
+          <button 
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <ListIcon size={16} /> List View
+          </button>
+          <button 
+            type="button"
+            onClick={() => setViewMode('map')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'map' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <MapIcon size={16} /> Map Mode
+          </button>
+        </div>
       </header>
 
-      {/* Stats Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-gray-500">
-            <AlertCircle size={16} />
-            <p className="text-sm font-medium">Total Alerts</p>
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2 text-gray-500">
+              <AlertCircle size={16} />
+              <p className="text-sm font-medium">Total Alerts</p>
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-        </div>
-        <div className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-amber-600">
-            <Clock size={16} />
-            <p className="text-sm font-medium">Pending Review</p>
+          <div className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2 text-amber-600">
+              <Clock size={16} />
+              <p className="text-sm font-medium">Pending Review</p>
+            </div>
+            <p className="text-3xl font-bold text-amber-700">{stats.pending}</p>
           </div>
-          <p className="text-3xl font-bold text-amber-700">{stats.pending}</p>
-        </div>
-        <div className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-rose-600">
-            <AlertTriangle size={16} />
-            <p className="text-sm font-medium">Emergency Level</p>
+          <div className="rounded-xl border border-rose-200 bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2 text-rose-600">
+              <AlertTriangle size={16} />
+              <p className="text-sm font-medium">Emergency Level</p>
+            </div>
+            <p className="text-3xl font-bold text-rose-700">{stats.emergency}</p>
           </div>
-          <p className="text-3xl font-bold text-rose-700">{stats.emergency}</p>
-        </div>
-        <div className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-emerald-600">
-            <CheckCircle2 size={16} />
-            <p className="text-sm font-medium">Resolved</p>
+          <div className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2 text-emerald-600">
+              <CheckCircle2 size={16} />
+              <p className="text-sm font-medium">Resolved</p>
+            </div>
+            <p className="text-3xl font-bold text-emerald-700">{stats.resolved}</p>
           </div>
-          <p className="text-3xl font-bold text-emerald-700">{stats.resolved}</p>
         </div>
-      </div>
 
-      {/* Filters & Search */}
-      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-          <div className="lg:col-span-6">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search by reporter, phone, description..."
-                className="h-10 w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+            <div className="lg:col-span-6">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by reporter, phone, description..."
+                  className="h-10 w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="lg:col-span-3">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</label>
+              <select
+                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Status</option>
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="lg:col-span-3">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Urgency</label>
+              <select
+                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500"
+                value={urgencyFilter}
+                onChange={(e) => setUrgencyFilter(e.target.value)}
+              >
+                <option value="All">All Urgency</option>
+                {URGENCY_OPTIONS.map(u => <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>)}
+              </select>
             </div>
           </div>
-          <div className="lg:col-span-3">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Status</label>
-            <select
-              className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Status</option>
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div className="lg:col-span-3">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Urgency</label>
-            <select
-              className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-blue-500"
-              value={urgencyFilter}
-              onChange={(e) => setUrgencyFilter(e.target.value)}
-            >
-              <option value="All">All Urgency</option>
-              {URGENCY_OPTIONS.map(u => <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>)}
-            </select>
-          </div>
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Incident</th>
-                <th className="px-4 py-3 font-semibold">Location</th>
-                <th className="px-4 py-3 font-semibold">Urgency</th>
-                <th className="px-4 py-3 font-semibold">Reporter</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold">Submitted</th>
-                <th className="px-4 py-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr><td colSpan="7" className="px-4 py-10 text-center text-gray-400">Loading alerts...</td></tr>
-              ) : filteredAlerts.length === 0 ? (
-                <tr><td colSpan="7" className="px-4 py-10 text-center text-gray-500">No public alerts found.</td></tr>
-              ) : (
-                filteredAlerts.map((alert) => (
-                  <tr key={alert.alert_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-gray-900 capitalize">{alert.incident_type}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-[200px]">{alert.description || 'No description'}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{alert.location_name || 'Unknown'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${getUrgencyColor(alert.urgency)}`}>
-                        {alert.urgency}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-900 font-medium">{alert.reporter_name || 'Anonymous'}</div>
-                      <div className="text-xs text-gray-500">{alert.reporter_phone}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(alert.status)}`}>
-                        {alert.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
-                      {new Date(alert.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); openModal('view', alert); }}
-                          className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="View Details"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); openModal('edit', alert); }}
-                          className="rounded-md p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
-                          title="Process Alert"
-                        >
-                          <MessageSquare size={18} />
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(alert.alert_id); }}
-                          className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
+        {viewMode === 'list' ? (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm mb-10">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Incident</th>
+                    <th className="px-4 py-3 font-semibold">Location</th>
+                    <th className="px-4 py-3 font-semibold">Urgency</th>
+                    <th className="px-4 py-3 font-semibold">Reporter</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Submitted</th>
+                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    <tr><td colSpan="7" className="px-4 py-10 text-center text-gray-400">Loading alerts...</td></tr>
+                  ) : filteredAlerts.length === 0 ? (
+                    <tr><td colSpan="7" className="px-4 py-10 text-center text-gray-500">No public alerts found.</td></tr>
+                  ) : (
+                    filteredAlerts.map((alert) => (
+                      <tr key={alert.alert_id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 rounded-lg ${getUrgencyColor(alert.urgency)} bg-opacity-10 shrink-0`}>
+                              {getIncidentIcon(alert.incident_type)}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900 capitalize">{alert.incident_type}</div>
+                              <div className="text-xs text-gray-500 truncate max-w-[200px]">{alert.description || 'No description'}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{alert.location_name || 'Unknown'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${getUrgencyColor(alert.urgency)}`}>
+                            {alert.urgency}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-gray-900 font-medium">{alert.reporter_name || 'Anonymous'}</div>
+                          <div className="text-xs text-gray-500">{alert.reporter_phone}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(alert.status)}`}>
+                            {alert.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">
+                          {new Date(alert.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openModal('view', alert); }}
+                              className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="View Details"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openModal('edit', alert); }}
+                              className="rounded-md p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                              title="Process Alert"
+                            >
+                              <MessageSquare size={18} />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDelete(alert.alert_id); }}
+                              className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm h-[600px] relative mb-10">
+            <MapContainer center={mapCenter} zoom={11} className="h-full w-full" zoomControl={false}>
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
+              <ZoomControl position="bottomright" />
+              
+              {groupedAlerts.map(group => {
+                const pos = parseCoords(group.coords);
+                if (!pos) return null;
+                
+                return (
+                  <Marker 
+                    key={group.coords} 
+                    position={pos} 
+                    icon={getMarkerIcon(group.alerts)}
+                  >
+                    <Popup className="custom-popup" maxWidth={350}>
+                      <div className="p-1 max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <h2 className="font-black text-gray-900 mb-3 flex items-center gap-2 border-b pb-2">
+                          <MapPin size={16} className="text-emerald-600" /> {group.location_name}
+                          <span className="ml-auto bg-gray-100 px-2 py-0.5 rounded text-xs">{group.alerts.length} alerts</span>
+                        </h2>
+                        
+                        <div className="space-y-4">
+                          {group.alerts.map((alert, idx) => (
+                            <div key={alert.alert_id} className={`p-3 rounded-xl border ${idx !== group.alerts.length - 1 ? 'border-gray-100 bg-gray-50/50' : 'border-emerald-100 bg-emerald-50/30'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${getUrgencyColor(alert.urgency)}`}>
+                                  {alert.urgency}
+                                </span>
+                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${getStatusColor(alert.status)}`}>
+                                  {alert.status}
+                                </span>
+                              </div>
+                              <h3 className="font-bold text-gray-900 capitalize flex items-center gap-2 text-sm">
+                                {getIncidentIcon(alert.incident_type)} {alert.incident_type}
+                              </h3>
+                              <p className="text-xs text-gray-600 mt-1 mb-3 line-clamp-2">{alert.description || 'No description'}</p>
+                              <div className="flex flex-col gap-1 mb-3 text-[10px] text-gray-500">
+                                <div className="flex items-center gap-1.5"><User size={10} /> {alert.reporter_name || 'Anonymous'}</div>
+                                <div className="flex items-center gap-1.5"><Clock size={10} /> {new Date(alert.created_at).toLocaleString()}</div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button 
+                                  type="button"
+                                  onClick={() => openModal('view', alert)}
+                                  className="w-full py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[10px] font-bold rounded-lg transition-colors"
+                                >
+                                  Details
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => openModal('edit', alert)}
+                                  className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-colors shadow-sm"
+                                >
+                                  Process
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+            
+            <div className="absolute bottom-6 left-6 z-[1000] bg-white bg-opacity-95 backdrop-blur-sm p-3 rounded-xl border border-gray-200 shadow-xl min-w-[140px]">
+              <h4 className="text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">Urgency Legend</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm shadow-red-200"></div>
+                  <span className="text-[11px] font-medium text-gray-600">Emergency</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-amber-500 shadow-sm shadow-amber-200"></div>
+                  <span className="text-[11px] font-medium text-gray-600">Urgent</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
+                  <span className="text-[11px] font-medium text-gray-600">Normal</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modals */}
       {modalMode && selectedAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
             <div className="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  {modalMode === 'view' ? 'Alert Details' : 
-                   modalMode === 'edit' ? 'Process Public Alert' : 'Confirm Deletion'}
+                  {modalMode === 'view' ? 'Alert Details' : 'Process Public Alert'}
                 </h2>
                 <p className="text-sm text-gray-500">ID: ALERT-{selectedAlert.alert_id}</p>
               </div>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full transition-colors">
+              <button type="button" onClick={closeModal} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full transition-colors">
                 <X size={18} />
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Left Side: Info */}
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Reporter Information</h3>
@@ -383,7 +573,6 @@ export function PublicAlertsPage() {
                   </div>
                 </div>
 
-                {/* Right Side: Incident Details */}
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Incident Description</h3>
@@ -452,9 +641,9 @@ export function PublicAlertsPage() {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 shrink-0">
               <button 
+                type="button"
                 onClick={closeModal} 
                 className="px-6 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
               >
@@ -462,9 +651,10 @@ export function PublicAlertsPage() {
               </button>
               {modalMode === 'edit' && (
                 <button 
+                  type="button"
                   onClick={handleUpdate}
                   disabled={isSubmitting}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-50 transition-colors"
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-50 transition-colors"
                 >
                   {isSubmitting ? 'Updating...' : 'Save Changes'}
                 </button>

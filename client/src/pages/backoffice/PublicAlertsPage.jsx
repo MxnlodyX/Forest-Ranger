@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { 
-  AlertTriangle, 
-  Eye, 
-  Trash2, 
-  Search, 
-  Filter, 
-  X, 
-  CheckCircle2, 
-  Clock, 
+import {
+  AlertTriangle,
+  Eye,
+  Trash2,
+  Search,
+  Filter,
+  X,
+  CheckCircle2,
+  Clock,
   MessageSquare,
   User,
   Phone,
@@ -19,12 +19,13 @@ import {
   Flame,
   Droplets,
   PawPrint,
-  Info
+  Info,
+  Image as ImageIcon
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { api } from '../../services/api';
+import { api, resolveMediaUrl } from '../../services/api';
 import { useAppContext } from '../../context/useAppContext';
 
 const STATUS_OPTIONS = ['Pending', 'Received', 'In Progress', 'Resolved', 'Rejected'];
@@ -65,10 +66,10 @@ const getMarkerIcon = (alertsAtLocation) => {
   // Find highest urgency in the group
   const hasEmergency = alertsAtLocation.some(a => a.urgency === 'emergency');
   const hasUrgent = alertsAtLocation.some(a => a.urgency === 'urgent');
-  
+
   let color = '#10b981'; // normal
   let type = alertsAtLocation[0]?.incident_type || 'other'; // primary type
-  
+
   if (hasEmergency) color = '#ef4444';
   else if (hasUrgent) color = '#f59e0b';
 
@@ -79,7 +80,7 @@ const getMarkerIcon = (alertsAtLocation) => {
     <div class="relative flex items-center justify-center">
       ${hasEmergency ? `<div class="absolute w-10 h-10 rounded-full opacity-20 animate-ping" style="background-color: ${color}"></div>` : ''}
       <div class="relative w-10 h-10 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-lg" style="background-color: ${color}">
-        ${type === 'fire' ? '🔥' : type === 'flood' ? '🌊' : type === 'wildlife' ? '🐾' : '⚠️'}
+        
       </div>
       ${showBadge ? `
         <div class="absolute -top-1 -right-1 bg-white text-gray-900 border-2 border-gray-800 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
@@ -106,11 +107,12 @@ export function PublicAlertsPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [urgencyFilter, setUrgencyFilter] = useState('All');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'map'
-  
+
   const [selectedAlertId, setSelectedAlertId] = useState(null);
   const [modalMode, setModalMode] = useState(null); // 'view' | 'edit'
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [lightboxImage, setLightboxImage] = useState(null);
+
   const [formData, setFormData] = useState({
     status: '',
     staff_comments: '',
@@ -135,16 +137,16 @@ export function PublicAlertsPage() {
   const filteredAlerts = useMemo(() => {
     return alerts.filter(alert => {
       const q = searchQuery.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         (alert.reporter_name || '').toLowerCase().includes(q) ||
         (alert.reporter_phone || '').toLowerCase().includes(q) ||
         (alert.reporter_email || '').toLowerCase().includes(q) ||
         (alert.description || '').toLowerCase().includes(q) ||
         (alert.incident_type || '').toLowerCase().includes(q);
-      
+
       const matchesStatus = statusFilter === 'All' || alert.status === statusFilter;
       const matchesUrgency = urgencyFilter === 'All' || alert.urgency === urgencyFilter;
-      
+
       return matchesSearch && matchesStatus && matchesUrgency;
     });
   }, [alerts, searchQuery, statusFilter, urgencyFilter]);
@@ -244,19 +246,19 @@ export function PublicAlertsPage() {
     <section className="p-6 md:p-8 flex flex-col h-screen overflow-hidden">
       <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Public Alerts Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Incident Reported by Villagers.</h1>
           <p className="mt-1 text-sm text-gray-500">Manage emergency reports submitted by villagers and the public.</p>
         </div>
 
         <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm shrink-0">
-          <button 
+          <button
             type="button"
             onClick={() => setViewMode('list')}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
             <ListIcon size={16} /> List View
           </button>
-          <button 
+          <button
             type="button"
             onClick={() => setViewMode('map')}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'map' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
@@ -367,7 +369,14 @@ export function PublicAlertsPage() {
                               {getIncidentIcon(alert.incident_type)}
                             </div>
                             <div>
-                              <div className="font-semibold text-gray-900 capitalize">{alert.incident_type}</div>
+                              <div className="font-semibold text-gray-900 capitalize flex items-center gap-2">
+                                {alert.incident_type}
+                                {alert.image_urls && alert.image_urls.length > 0 && (
+                                  <span title={`${alert.image_urls.length} photos attached`} className="text-blue-500">
+                                    <ImageIcon size={12} />
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-gray-500 truncate max-w-[200px]">{alert.description || 'No description'}</div>
                             </div>
                           </div>
@@ -392,7 +401,7 @@ export function PublicAlertsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
-                            <button 
+                            <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); openModal('view', alert); }}
                               className="rounded-md p-1.5 text-blue-600 hover:bg-blue-50 transition-colors"
@@ -400,7 +409,7 @@ export function PublicAlertsPage() {
                             >
                               <Eye size={18} />
                             </button>
-                            <button 
+                            <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); openModal('edit', alert); }}
                               className="rounded-md p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
@@ -408,7 +417,7 @@ export function PublicAlertsPage() {
                             >
                               <MessageSquare size={18} />
                             </button>
-                            <button 
+                            <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleDelete(alert.alert_id); }}
                               className="rounded-md p-1.5 text-rose-600 hover:bg-rose-50 transition-colors"
@@ -430,15 +439,15 @@ export function PublicAlertsPage() {
             <MapContainer center={mapCenter} zoom={11} className="h-full w-full" zoomControl={false}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
               <ZoomControl position="bottomright" />
-              
+
               {groupedAlerts.map(group => {
                 const pos = parseCoords(group.coords);
                 if (!pos) return null;
-                
+
                 return (
-                  <Marker 
-                    key={group.coords} 
-                    position={pos} 
+                  <Marker
+                    key={group.coords}
+                    position={pos}
                     icon={getMarkerIcon(group.alerts)}
                   >
                     <Popup className="custom-popup" maxWidth={350}>
@@ -447,7 +456,7 @@ export function PublicAlertsPage() {
                           <MapPin size={16} className="text-emerald-600" /> {group.location_name}
                           <span className="ml-auto bg-gray-100 px-2 py-0.5 rounded text-xs">{group.alerts.length} alerts</span>
                         </h2>
-                        
+
                         <div className="space-y-4">
                           {group.alerts.map((alert, idx) => (
                             <div key={alert.alert_id} className={`p-3 rounded-xl border ${idx !== group.alerts.length - 1 ? 'border-gray-100 bg-gray-50/50' : 'border-emerald-100 bg-emerald-50/30'}`}>
@@ -468,14 +477,14 @@ export function PublicAlertsPage() {
                                 <div className="flex items-center gap-1.5"><Clock size={10} /> {new Date(alert.created_at).toLocaleString()}</div>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
-                                <button 
+                                <button
                                   type="button"
                                   onClick={() => openModal('view', alert)}
                                   className="w-full py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-[10px] font-bold rounded-lg transition-colors"
                                 >
                                   Details
                                 </button>
-                                <button 
+                                <button
                                   type="button"
                                   onClick={() => openModal('edit', alert)}
                                   className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-colors shadow-sm"
@@ -492,7 +501,7 @@ export function PublicAlertsPage() {
                 );
               })}
             </MapContainer>
-            
+
             <div className="absolute bottom-6 left-6 z-[1000] bg-white bg-opacity-95 backdrop-blur-sm p-3 rounded-xl border border-gray-200 shadow-xl min-w-[140px]">
               <h4 className="text-xs font-bold text-gray-900 mb-2 uppercase tracking-wider">Urgency Legend</h4>
               <div className="space-y-2">
@@ -593,10 +602,10 @@ export function PublicAlertsPage() {
                     <form onSubmit={handleUpdate} className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Update Status</label>
-                        <select 
+                        <select
                           className="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
                           value={formData.status}
-                          onChange={(e) => setFormData({...formData, status: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                           required
                         >
                           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -604,11 +613,11 @@ export function PublicAlertsPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Staff Comments</label>
-                        <textarea 
+                        <textarea
                           className="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 min-h-[80px]"
                           placeholder="Internal notes on how this alert is being handled..."
                           value={formData.staff_comments}
-                          onChange={(e) => setFormData({...formData, staff_comments: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, staff_comments: e.target.value })}
                         />
                       </div>
                     </form>
@@ -639,18 +648,45 @@ export function PublicAlertsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Attached Photos Section */}
+              {selectedAlert.image_urls && selectedAlert.image_urls.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-100">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <ImageIcon size={14} /> Attached Photos ({selectedAlert.image_urls.length})
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {selectedAlert.image_urls.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className="aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 cursor-zoom-in group relative"
+                        onClick={() => setLightboxImage(resolveMediaUrl(url))}
+                      >
+                        <img
+                          src={resolveMediaUrl(url)}
+                          alt={`Evidence ${idx + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                          <Eye size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 shrink-0">
-              <button 
+              <button
                 type="button"
-                onClick={closeModal} 
+                onClick={closeModal}
                 className="px-6 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 {modalMode === 'view' ? 'Close' : 'Cancel'}
               </button>
               {modalMode === 'edit' && (
-                <button 
+                <button
                   type="button"
                   onClick={handleUpdate}
                   disabled={isSubmitting}
@@ -661,6 +697,28 @@ export function PublicAlertsPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox Overlay */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 p-3 rounded-full transition-all hover:scale-110"
+            onClick={() => setLightboxImage(null)}
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Enlarged evidence"
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </section>

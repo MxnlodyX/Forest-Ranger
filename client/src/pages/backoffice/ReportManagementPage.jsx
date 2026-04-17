@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { incidentTemplates } from '../field-ops/mockData';
+import { INCIDENT_TYPES, getIncidentLabel } from '../../utils/constants';
 import { useAppContext } from '../../context/useAppContext';
 import { useApi } from '../../hooks/useApi';
 import { api, resolveMediaUrl } from '../../services/api';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 
-const defaultIncidentType = incidentTemplates?.[0]?.id || 'wildlife';
+const defaultIncidentType = INCIDENT_TYPES[0].id;
 
 function formatType(typeId) {
-  return incidentTemplates?.find((item) => item.id === typeId)?.label ?? typeId;
+  return getIncidentLabel(typeId);
 }
 
 function formatDateTime(value) {
@@ -464,7 +464,7 @@ export function ReportManagementPage() {
                       className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-blue-500"
                       disabled={isSubmitting}
                     >
-                      {incidentTemplates?.map((template) => (
+                      {INCIDENT_TYPES.map((template) => (
                         <option key={template.id} value={template.id}>
                           {template.label}
                         </option>

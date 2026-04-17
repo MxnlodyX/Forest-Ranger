@@ -9,7 +9,8 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
-
+.postman
+postman
 # ===== Environment =====
 !.env.example
 

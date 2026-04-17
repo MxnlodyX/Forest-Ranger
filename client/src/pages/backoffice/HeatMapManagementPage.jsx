@@ -7,9 +7,9 @@ import { Flame, MapPinned, RefreshCcw } from 'lucide-react';
 
 import { Button } from '../../components/ui';
 import { api } from '../../services/api';
+import { INCIDENT_TYPES, getIncidentLabel } from '../../utils/constants';
 
 const DEFAULT_CENTER = [14.4386, 101.3724];
-const EVENT_TYPE_OPTIONS = ['Fire', 'Emergency', 'Wildlife', 'Damage', 'Poaching', 'Illegal Logging'];
 
 function HeatLayer({ points }) {
   const map = useMap();
@@ -205,9 +205,9 @@ export function HeatMapManagementPage() {
               className="w-full min-h-[42px] rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-800 leading-normal outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             >
               <option value="">All event types</option>
-              {EVENT_TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type}>
-                  {type}
+              {INCIDENT_TYPES.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.label}
                 </option>
               ))}
             </select>

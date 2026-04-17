@@ -1,9 +1,18 @@
-from flask import Blueprint, jsonify, request
+import os
+import uuid
+from flask import Blueprint, jsonify, request, current_app, url_for
+from werkzeug.utils import secure_filename
 from ..models import get_db_connection
 import pymysql
 from flask_mail import Message
 from app.extensions import mail
+
 vilager_report_bp = Blueprint('vilager_report', __name__)
+
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+def _is_allowed_image(filename: str) -> bool:
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 def _serialize_row(row: dict) -> dict:
     if row is None:
@@ -21,6 +30,7 @@ def migrate_db():
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
+            # Create main table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS public_alert (
                     alert_id INT AUTO_INCREMENT,
@@ -50,55 +60,87 @@ def migrate_db():
                         ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
+            # Create image table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS public_alert_image (
+                    image_id INT AUTO_INCREMENT,
+                    alert_id INT NOT NULL,
+                    image_url VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (image_id),
+                    CONSTRAINT fk_public_alert_image_alert_id
+                        FOREIGN KEY (alert_id) REFERENCES public_alert(alert_id)
+                        ON DELETE CASCADE
+                        ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """)
             conn.commit()
         conn.close()
         return jsonify({"message": "Migration successful"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@vilager_report_bp.route('/api/public/alerts/upload', methods=['POST'])
+def upload_public_image():
+    image_file = request.files.get('image')
+    if not image_file or not image_file.filename:
+        return jsonify({'error': 'image file is required'}), 400
+
+    if not _is_allowed_image(image_file.filename):
+        return jsonify({'error': 'only png, jpg, jpeg, webp are allowed'}), 400
+
+    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'public_alerts')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    extension = image_file.filename.rsplit('.', 1)[1].lower()
+    unique_name = f"public-{uuid.uuid4().hex}.{extension}"
+    save_path = os.path.join(upload_dir, unique_name)
+    image_file.save(save_path)
+
+    image_url = url_for('static', filename=f'uploads/public_alerts/{unique_name}', _external=False)
+    return jsonify({'image_url': image_url}), 201
+
 @vilager_report_bp.route('/api/public/alerts', methods=['POST'])
 def create_vilager_alert():
     payload = request.get_json(silent=True) or {}
     
-    # Check if bulk (list) or single (dict)
-    is_bulk = isinstance(payload, list)
-    alerts_to_process = payload if is_bulk else [payload]
-    results = []
+    incident_type = payload.get('incident_type')
+    reporter_phone = payload.get('reporter_phone')
+    image_urls = payload.get('image_urls') or []
+
+    if not incident_type or not reporter_phone:
+        return jsonify({"error": "incident_type and reporter_phone are required"}), 400
 
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            for item in alerts_to_process:
-                incident_type = item.get('incident_type')
-                other_detail = item.get('other_detail')
-                urgency = item.get('urgency') or 'normal'
-                location_id = item.get('location_id')
-                reporter_name = item.get('reporter_name')
-                reporter_phone = item.get('reporter_phone')
-                reporter_email = item.get('reporter_email')
-                description = item.get('description')
-
-                if not incident_type or not reporter_phone:
-                    if is_bulk: continue # skip invalid ones in bulk
-                    else: return jsonify({"error": "incident_type and reporter_phone are required"}), 400
-
-                cursor.execute(
-                    """
-                    INSERT INTO public_alert 
-                        (incident_type, other_detail, urgency, location_id, 
-                         reporter_name, reporter_phone, reporter_email, description, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Pending')
-                    """,
+            cursor.execute(
+                """
+                INSERT INTO public_alert 
                     (incident_type, other_detail, urgency, location_id, 
-                     reporter_name, reporter_phone, reporter_email, description)
+                     reporter_name, reporter_phone, reporter_email, description, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'Pending')
+                """,
+                (incident_type, payload.get('other_detail'), payload.get('urgency', 'normal'), 
+                 payload.get('location_id'), payload.get('reporter_name'), 
+                 reporter_phone, payload.get('reporter_email'), payload.get('description'))
+            )
+            alert_id = cursor.lastrowid
+
+            for url in image_urls:
+                cursor.execute(
+                    "INSERT INTO public_alert_image (alert_id, image_url) VALUES (%s, %s)",
+                    (alert_id, url)
                 )
-                alert_id = cursor.lastrowid
-                cursor.execute("SELECT * FROM public_alert WHERE alert_id = %s", (alert_id,))
-                results.append(_serialize_row(cursor.fetchone()))
             
             conn.commit()
+            
+            cursor.execute("SELECT * FROM public_alert WHERE alert_id = %s", (alert_id,))
+            result = _serialize_row(cursor.fetchone())
+            result['image_urls'] = image_urls
+            
         conn.close()
-        return jsonify(results if is_bulk else results[0]), 201
+        return jsonify(result), 201
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -114,9 +156,15 @@ def list_alerts():
                 LEFT JOIN staff s ON pa.handled_by = s.staff_id
                 ORDER BY pa.created_at DESC
             """)
-            rows = cursor.fetchall()
+            alerts = cursor.fetchall()
+            
+            for alert in alerts:
+                cursor.execute("SELECT image_url FROM public_alert_image WHERE alert_id = %s", (alert['alert_id'],))
+                images = cursor.fetchall()
+                alert['image_urls'] = [img['image_url'] for img in images]
+
         conn.close()
-        return jsonify([_serialize_row(r) for r in rows]), 200
+        return jsonify([_serialize_row(r) for r in alerts]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -133,6 +181,12 @@ def get_alert(alert_id):
                 WHERE pa.alert_id = %s
             """, (alert_id,))
             row = cursor.fetchone()
+            
+            if row:
+                cursor.execute("SELECT image_url FROM public_alert_image WHERE alert_id = %s", (alert_id,))
+                images = cursor.fetchall()
+                row['image_urls'] = [img['image_url'] for img in images]
+                
         conn.close()
         if not row:
             return jsonify({"error": "Alert not found"}), 404

@@ -195,6 +195,18 @@ CREATE TABLE IF NOT EXISTS public_alert (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS public_alert_image (
+    image_id INT AUTO_INCREMENT,
+    alert_id INT NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (image_id),
+    CONSTRAINT fk_public_alert_image_alert_id
+        FOREIGN KEY (alert_id) REFERENCES public_alert(alert_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ============================================
 -- Seed data (MVP)
 -- ============================================

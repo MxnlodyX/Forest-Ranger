@@ -1,0 +1,47 @@
+[
+    {
+        "location_name": "Haew Narok Waterfall Observation Point",
+        "location_type": "Water Source / Viewpoint",
+        "risk_level": "High",
+        "sector": "Khao Yai - Southern Zone",
+        "coordinates": "14.295800, 101.370500",
+        "description": "A high-risk area due to steep cliffs and strong water currents. Primary monitoring point for elephant crossings and tourist safety.",
+        "created_by": 2
+    },
+    {
+        "location_name": "Lam Ta Khong Campground",
+        "location_type": "Campsite",
+        "risk_level": "Medium",
+        "sector": "Khao Yai - Central Zone",
+        "coordinates": "14.428100, 101.398600",
+        "description": "Main camping area for tourists. Frequent wildlife encounters (macaques and deer). Requires constant waste management monitoring.",
+        "created_by": 2
+    },
+    {
+        "location_name": "Nong Pak Chi Wildlife Observation Tower",
+        "location_type": "Observation Tower",
+        "risk_level": "Low",
+        "sector": "Khao Yai - North Western Sector",
+        "coordinates": "14.449700, 101.358200",
+        "description": "Strategic tower for observing large mammals like gaur and elephants. Key point for biodiversity logging.",
+        "created_by": 2
+    },
+    {
+        "location_name": "Khao Khiau Radar Station Viewpoint",
+        "location_type": "High Altitude Point",
+        "risk_level": "Medium",
+        "sector": "Khao Yai - Mountain Peak",
+        "coordinates": "14.354200, 101.401200",
+        "description": "Highest point in the park. Used for weather monitoring and radio communication relay. Often has thick fog and low visibility.",
+        "created_by": 2
+    },
+    {
+        "location_name": "Mo Sing To Seminar Center Area",
+        "location_type": "Administrative / Tourist Zone",
+        "risk_level": "Low",
+        "sector": "Khao Yai - Headquarters",
+        "coordinates": "14.439200, 101.372100",
+        "description": "Central administrative hub. Monitoring focus is on traffic control and visitor information services.",
+        "created_by": 1
+    }
+]

@@ -3,14 +3,14 @@ import React, { useState, useEffect, useRef } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const INCIDENT_TYPES = [
-  { id: "fire", label: "Forest Fire", icon: <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path> },
-  { id: "flood", label: "Flood / Storm", icon: <><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M16 14v6"></path><path d="M8 14v6"></path><path d="M12 16v6"></path></> },
-  { id: "wildlife", label: "Wildlife Alert", icon: <><circle cx="11" cy="4" r="2"></circle><circle cx="18" cy="8" r="2"></circle><circle cx="20" cy="16" r="2"></circle><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.55 3.55 0 0 1 2 13.5V11a.5.5 0 0 1 .5-.5Q5 10.5 9 10z"></path></> },
-  { id: "poaching", label: "Poaching", icon: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path> },
-  { id: "logging", label: "Illegal Logging", icon: <path d="M12 22v-5M9 8l3-3 3 3M12 5v13"></path> },
-  { id: "damage", label: "Infrastructure", icon: <path d="M3 21h18M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"></path> },
-  { id: "emergency", label: "Emergency", icon: <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path> },
-  { id: "other", label: "Other", icon: <><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></> }
+  { id: "fire", label: "ไฟป่า", icon: <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path> },
+  { id: "flood", label: "น้ำท่วม / พายุ", icon: <><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M16 14v6"></path><path d="M8 14v6"></path><path d="M12 16v6"></path></> },
+  { id: "wildlife", label: "สัตว์ป่ารบกวน", icon: <><circle cx="11" cy="4" r="2"></circle><circle cx="18" cy="8" r="2"></circle><circle cx="20" cy="16" r="2"></circle><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.55 3.55 0 0 1 2 13.5V11a.5.5 0 0 1 .5-.5Q5 10.5 9 10z"></path></> },
+  { id: "poaching", label: "ลักลอบล่าสัตว์", icon: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path> },
+  { id: "logging", label: "ลักลอบตัดไม้", icon: <path d="M12 22v-5M9 8l3-3 3 3M12 5v13"></path> },
+  { id: "damage", label: "ความเสียหายพื้นฐาน", icon: <path d="M3 21h18M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"></path> },
+  { id: "emergency", label: "เหตุฉุกเฉิน", icon: <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path> },
+  { id: "other", label: "อื่นๆ", icon: <><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path><path d="M12 8v8"></path></> }
 ];
 
 export function AlertSection() {
@@ -78,7 +78,7 @@ export function AlertSection() {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length + selectedFiles.length > 5) {
-      alert("You can attach up to 5 photos.");
+      alert("คุณสามารถแนบรูปภาพได้สูงสุด 5 รูป");
       return;
     }
     setSelectedFiles(prev => [...prev, ...files]);
@@ -96,11 +96,11 @@ export function AlertSection() {
 
   const nextStep = () => {
     if (step === 1 && (!selectedType || !urgency)) {
-      alert("Please select incident type and urgency level.");
+      alert("โปรดเลือกประเภทเหตุการณ์และระดับความเร่งด่วน");
       return;
     }
     if (step === 2 && !selectedLocationId) {
-      alert("Please select incident location.");
+      alert("โปรดเลือกสถานที่เกิดเหตุ");
       return;
     }
     setStep(prev => Math.min(prev + 1, totalSteps));
@@ -145,7 +145,7 @@ export function AlertSection() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!contactInfo.phone) {
-      alert("Please provide a contact phone number.");
+      alert("โปรดระบุเบอร์โทรศัพท์สำหรับติดต่อกลับ");
       return;
     }
     setIsSubmitting(true);
@@ -173,10 +173,10 @@ export function AlertSection() {
         setTimeout(() => setSubmitSuccess(false), 8000);
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error}`);
+        alert(`เกิดข้อผิดพลาด: ${errorData.error}`);
       }
     } catch (error) {
-      alert("Could not connect to the server.");
+      alert("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
     } finally {
       setIsSubmitting(false);
     }
@@ -191,15 +191,15 @@ export function AlertSection() {
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
           </div>
-          <h2 className="text-3xl font-bold text-slate-900">Report Submitted</h2>
+          <h2 className="text-3xl font-bold text-slate-900">ส่งรายงานสำเร็จ</h2>
           <p className="text-slate-500">
-            Thank you for your report. Our team will investigate the situation as soon as possible.
+            ขอบคุณสำหรับการแจ้งเหตุ ทีมงานของเราจะดำเนินการตรวจสอบสถานการณ์โดยเร็วที่สุด
           </p>
           <button 
             onClick={() => setSubmitSuccess(false)}
             className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all shadow-md"
           >
-            Report New Incident
+            รายงานเหตุการณ์ใหม่
           </button>
         </div>
       </section>
@@ -219,13 +219,13 @@ export function AlertSection() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-1.5 mb-6 shadow-sm">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Public Incident Reporting</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">รายงานเหตุการณ์สาธารณะ</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
-            Report <span className="text-red-600">Forest</span> Incident
+            รายงาน <span className="text-red-600">เหตุการณ์</span> ในพื้นที่ป่า
           </h2>
           <p className="mt-4 text-slate-500 max-w-md mx-auto font-medium">
-            Join us in protecting the forest and community by reporting incidents.
+            ร่วมปกป้องผืนป่าและชุมชนของเราด้วยการรายงานเหตุการณ์ที่เกิดขึ้น
           </p>
         </div>
 
@@ -249,7 +249,7 @@ export function AlertSection() {
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div>
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-                    01. Incident Type
+                    01. ประเภทเหตุการณ์
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {INCIDENT_TYPES.map((t) => (
@@ -275,20 +275,20 @@ export function AlertSection() {
                       value={otherDetail}
                       onChange={(e) => setOtherDetail(e.target.value)}
                       className="mt-4 w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium"
-                      placeholder="Please specify incident details..."
+                      placeholder="โปรดระบุรายละเอียดเหตุการณ์..."
                     />
                   )}
                 </div>
 
                 <div>
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-                    02. Urgency Level
+                    02. ระดับความเร่งด่วน
                   </h3>
                   <div className="flex flex-wrap gap-3">
                     {[
-                      { id: "normal", label: "Normal", color: "bg-green-100", dot: "bg-green-500", active: "border-green-500 bg-green-50 text-green-700" },
-                      { id: "urgent", label: "Urgent", color: "bg-orange-100", dot: "bg-orange-500", active: "border-orange-500 bg-orange-50 text-orange-700" },
-                      { id: "emergency", label: "Emergency", color: "bg-red-100", dot: "bg-red-500", active: "border-red-500 bg-red-50 text-red-700" }
+                      { id: "normal", label: "ปกติ", color: "bg-green-100", dot: "bg-green-500", active: "border-green-500 bg-green-50 text-green-700" },
+                      { id: "urgent", label: "ด่วน", color: "bg-orange-100", dot: "bg-orange-500", active: "border-orange-500 bg-orange-50 text-orange-700" },
+                      { id: "emergency", label: "ด่วนที่สุด", color: "bg-red-100", dot: "bg-red-500", active: "border-red-500 bg-red-50 text-red-700" }
                     ].map((u) => (
                       <button
                         key={u.id}
@@ -313,7 +313,7 @@ export function AlertSection() {
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div>
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-                    03. Location
+                    03. สถานที่เกิดเหตุ
                   </h3>
                   
                   <button
@@ -329,7 +329,7 @@ export function AlertSection() {
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                       </svg>
                     )}
-                    {isGettingLocation ? "Locating..." : "Auto-detect Location"}
+                    {isGettingLocation ? "กำลังระบุตำแหน่ง..." : "ระบุตำแหน่งอัตโนมัติ"}
                   </button>
 
                   <div className="relative group">
@@ -338,7 +338,7 @@ export function AlertSection() {
                       onChange={(e) => setSelectedLocationId(e.target.value)}
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-6 py-4 text-slate-900 appearance-none focus:outline-none focus:border-slate-900 transition-all cursor-pointer font-bold"
                     >
-                      <option value="">Select location from list...</option>
+                      <option value="">เลือกสถานที่จากรายการ...</option>
                       {locations.map((loc) => (
                         <option key={loc.location_id} value={loc.location_id}>
                           {loc.location_name}
@@ -356,7 +356,7 @@ export function AlertSection() {
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   </div>
                   <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                    Select the closest location or use auto-detect for faster assistance.
+                    เลือกสถานที่ที่ใกล้ที่สุดหรือใช้การระบุตำแหน่งอัตโนมัติเพื่อการช่วยเหลือที่รวดเร็วขึ้น
                   </p>
                 </div>
               </div>
@@ -367,7 +367,7 @@ export function AlertSection() {
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div>
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-                    04. Reporter Information
+                    04. ข้อมูลผู้แจ้งเหตุ
                   </h3>
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -376,7 +376,7 @@ export function AlertSection() {
                         value={contactInfo.fullName}
                         onChange={handleContactChange}
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium"
-                        placeholder="Full Name"
+                        placeholder="ชื่อ-นามสกุล"
                       />
                       <input
                         name="phone"
@@ -384,7 +384,7 @@ export function AlertSection() {
                         onChange={handleContactChange}
                         required
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium"
-                        placeholder="Phone Number *"
+                        placeholder="เบอร์โทรศัพท์ *"
                       />
                     </div>
                     <input
@@ -393,14 +393,14 @@ export function AlertSection() {
                       value={contactInfo.email}
                       onChange={handleContactChange}
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium"
-                      placeholder="Email for updates (optional)"
+                      placeholder="อีเมล (ไม่บังคับ)"
                     />
                   </div>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-                    05. Photos and Description
+                    05. รูปภาพและรายละเอียดเพิ่มเติม
                   </h3>
                   
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 mb-6">
@@ -423,7 +423,7 @@ export function AlertSection() {
                         className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 hover:border-slate-900 hover:text-slate-900 transition-all bg-slate-50 group"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><path d="M12 5v14M5 12h14"/></svg>
-                        <span className="text-[9px] font-black mt-1 uppercase tracking-tighter">Add Photo</span>
+                        <span className="text-[9px] font-black mt-1 uppercase tracking-tighter">เพิ่มรูปภาพ</span>
                       </button>
                     )}
                   </div>
@@ -433,7 +433,7 @@ export function AlertSection() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-100 rounded-3xl px-6 py-4 text-slate-900 min-h-[140px] focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-medium"
-                    placeholder="Describe the incident or provide landmarks..."
+                    placeholder="อธิบายเหตุการณ์หรือระบุจุดสังเกต..."
                   ></textarea>
                 </div>
               </div>
@@ -448,7 +448,7 @@ export function AlertSection() {
                   className="px-8 h-14 rounded-2xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                  Back
+                  ย้อนกลับ
                 </button>
               )}
               
@@ -458,7 +458,7 @@ export function AlertSection() {
                   onClick={nextStep}
                   className="grow h-14 rounded-2xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
                 >
-                  Next
+                  ถัดไป
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                 </button>
               ) : (
@@ -470,7 +470,7 @@ export function AlertSection() {
                   {isSubmitting ? (
                     <span className="animate-spin h-6 w-6 border-3 border-white border-t-transparent rounded-full"></span>
                   ) : (
-                    "Submit Report"
+                    "ส่งรายงาน"
                   )}
                 </button>
               )}
@@ -484,14 +484,14 @@ export function AlertSection() {
                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 </div>
                 <div>
-                   <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Emergency Hotline</p>
+                   <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-1">สายด่วนเหตุฉุกเฉิน</p>
                    <p className="text-slate-900 text-3xl font-black tabular-nums">1362</p>
                 </div>
              </div>
              
              <div className="text-center md:text-right">
                 <p className="text-slate-400 text-[10px] font-medium leading-relaxed max-w-[200px]">
-                  Reports are sent directly to the nearest forest ranger station for immediate investigation.
+                  รายงานจะถูกส่งตรงไปยังหน่วยพิทักษ์ป่าที่ใกล้ที่สุดเพื่อดำเนินการตรวจสอบทันที
                 </p>
              </div>
           </div>

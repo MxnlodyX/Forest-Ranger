@@ -36,8 +36,27 @@ export function KnowledgeSources() {
 
   // กรองข้อมูลตามเงื่อนไข
   const filteredResources = resources.filter((item) => {
-    const matchesMediaType = activeMediaType === "ทั้งหมด" || item.type === activeMediaType;
-    const matchesCategory = activeCategory === "ทั้งหมด" || item.category === activeCategory;
+    let matchesMediaType = activeMediaType === "ทั้งหมด";
+    if (!matchesMediaType) {
+      if (activeMediaType === "บทความ") {
+        matchesMediaType = item.type === "บทความ" || item.type === "Article";
+      } else if (activeMediaType === "วิดีโอ") {
+        matchesMediaType = item.type === "วิดีโอ" || item.type === "Video";
+      }
+    }
+    
+    // Mapping categories from Thai UI to English stored in DB
+    const categoryMap = {
+      "ระบบนิเวศ": "Ecosystem",
+      "แหล่งน้ำ": "Water Resources",
+      "สัตว์ป่า": "Wildlife",
+      "ภัยพิบัติ": "Disasters",
+      "การอนุรักษ์": "Conservation"
+    };
+
+    const targetCategory = categoryMap[activeCategory] || activeCategory;
+    const matchesCategory = activeCategory === "ทั้งหมด" || item.category === activeCategory || item.category === targetCategory;
+    
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           item.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -164,7 +183,7 @@ export function KnowledgeSources() {
                     </span>
                     {/* Badge แสดงประเภท (บทความ/วิดีโอ) */}
                     <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
-                      {item.type === "วิดีโอ" ? (
+                      {(item.type === "วิดีโอ" || item.type === "Video") ? (
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg>
                       ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path></svg>

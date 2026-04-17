@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request
 from ..models import get_db_connection
 import pymysql
-
+from flask_mail import Message
+from app.extensions import mail
 vilager_report_bp = Blueprint('vilager_report', __name__)
 
 def _serialize_row(row: dict) -> dict:
@@ -149,10 +150,18 @@ def update_alert(alert_id):
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            cursor.execute("SELECT 1 FROM public_alert WHERE alert_id = %s", (alert_id,))
-            if not cursor.fetchone():
+            # --- จุดที่ 1: ปรับ SELECT เพื่อดึงอีเมล ---
+            # สมมติว่าในตาราง public_alert มีคอลัมน์ชื่อ reporter_email
+            # (ถ้าของคุณชื่ออื่น เช่น email หรือ contact_email ให้แก้ตรงนี้นะครับ)
+            cursor.execute("SELECT reporter_email FROM public_alert WHERE alert_id = %s", (alert_id,))
+            alert_record = cursor.fetchone()
+            
+            if not alert_record:
                 conn.close()
                 return jsonify({"error": "Alert not found"}), 404
+
+            # เก็บค่า email เอาไว้ใช้ส่ง
+            reporter_email = alert_record.get('reporter_email')
 
             updates = []
             params = []
@@ -175,7 +184,41 @@ def update_alert(alert_id):
             cursor.execute(query, tuple(params))
             conn.commit()
         conn.close()
+
+        # --- จุดที่ 2: ส่งอีเมลหลังจาก Commit ลง Database สำเร็จแล้ว ---
+        # เช็คว่ามีการส่งอีเมลมาใน DB และมีการอัปเดต status ถึงจะส่งเมล
+        if status and reporter_email:
+            try:
+                msg = Message(
+                    subject=f"🌲 Forest Shield: อัปเดตสถานะการแจ้งเหตุ #{alert_id}",
+                    recipients=[reporter_email]
+                )
+                
+                # แนบ staff_comments ไปในเมลด้วยถ้ามีคนพิมพ์มา
+                comments_html = f"<p><b>หมายเหตุจากเจ้าหน้าที่:</b> {staff_comments}</p>" if staff_comments else ""
+                
+                msg.html = f"""
+                    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                        <h3 style="color: #2e7d32;">แจ้งเตือนการอัปเดตสถานะ</h3>
+                        <p>การแจ้งเหตุหมายเลข <b>#{alert_id}</b> ของคุณได้รับการอัปเดตแล้ว</p>
+                        <p>สถานะปัจจุบัน: <strong style="color: #27ae60;">{status}</strong></p>
+                        {comments_html}
+                        <hr style="border: 0; border-top: 1px solid #eee; margin-top: 20px;">
+                        <p style="font-size: 12px; color: #888;">นี่คือข้อความอัตโนมัติจากระบบ กรุณาอย่าตอบกลับ</p>
+                    </div>
+                """
+                mail.send(msg)
+                
+            except Exception as email_err:
+                # กรณีส่งเมลไม่ผ่าน แต่อัปเดต DB สำเร็จแล้ว
+                print(f"Email Error: {email_err}")
+                return jsonify({
+                    "message": "Alert updated successfully, but failed to send email",
+                    "email_error": str(email_err)
+                }), 200
+
         return jsonify({"message": "Alert updated successfully"}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -1,81 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Eye, Pencil, Trash2, Plus, Search, X, FileText, Video, PlayCircle } from 'lucide-react';
-import { resolveMediaUrl } from '../../services/api';
+import { api, resolveMediaUrl } from '../../services/api';
 import { Editor } from '../../components/ui/Editor';
 
-// Mock Data Converter Helper
-const stringToEditorData = (str) => ({
-  time: Date.now(),
-  blocks: [
-    {
-      type: 'paragraph',
-      data: { text: str }
-    }
-  ],
-  version: '2.31.5'
-});
-
-// Mock Data
-const initialKnowledgeResources = [
-  {
-    id: 1,
-    title: "เส้นทางศึกษาธรรมชาติ: เรียนรู้ป่าดิบชื้นเขตร้อน",
-    excerpt: "สำรวจความหลากหลายของสิ่งมีชีวิตตามเส้นทางเดินป่า ตั้งแต่พืชคลุมดินจนถึงเรือนยอดไม้สูง",
-    category: "ระบบนิเวศ",
-    date: "28 มี.ค. 2569",
-    readTime: "8 นาที",
-    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1920&auto=format&fit=crop",
-    type: "บทความ",
-    content: stringToEditorData("บทความนี้จะพาคุณไปสำรวจความมหัศจรรย์ของป่าดิบชื้นเขตร้อน...")
-  },
-  {
-    id: 2,
-    title: "น้ำตกและลำธาร: เส้นเลือดของผืนป่า",
-    excerpt: "ความสำคัญของระบบน้ำในป่าต่อความยั่งยืนของระบบนิเวศทั้งหมด",
-    category: "แหล่งน้ำ",
-    date: "25 มี.ค. 2569",
-    readTime: "5 นาที",
-    image: "https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=800&auto=format&fit=crop",
-    type: "วิดีโอ",
-    content: stringToEditorData("วิดีโอนี้แสดงให้เห็นถึงความเชื่อมโยงระหว่างต้นน้ำและปลายน้ำ...")
-  },
-  {
-    id: 3,
-    title: "นกป่าเขตร้อน: ตัวชี้วัดสุขภาพป่า",
-    excerpt: "ทำไมนกจึงเป็นดัชนีชี้วัดที่ดีที่สุดของความสมบูรณ์ของระบบนิเวศป่า",
-    category: "สัตว์ป่า",
-    date: "20 มี.ค. 2569",
-    readTime: "6 นาที",
-    image: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?q=80&w=800&auto=format&fit=crop",
-    type: "บทความ",
-    content: stringToEditorData("การสำรวจประชากรนกสามารถบอกเราได้ถึงความเปลี่ยนแปลงของสภาพแวดล้อม...")
-  },
-  {
-    id: 4,
-    title: "ไฟป่า: ภัยเงียบที่ทำลายล้างผืนป่าทั่วโลก",
-    excerpt: "สาเหตุ ผลกระทบ และวิธีป้องกันไฟป่าที่ทุกคนควรรู้",
-    category: "ภัยพิบัติ",
-    date: "15 มี.ค. 2569",
-    readTime: "10 นาที",
-    image: "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop",
-    type: "บทความ",
-    content: stringToEditorData("ทำความเข้าใจสาเหตุของไฟป่า ทั้งที่เกิดจากธรรมชาติและน้ำมือมนุษย์...")
-  },
-  {
-    id: 5,
-    title: "การปลูกป่าทดแทน: แนวทางฟื้นฟูระบบนิเวศ",
-    excerpt: "วิธีการปลูกป่าที่ถูกต้องเพื่อฟื้นฟูพื้นที่ป่าเสื่อมโทรมอย่างยั่งยืน",
-    category: "การอนุรักษ์",
-    date: "10 มี.ค. 2569",
-    readTime: "12 นาที",
-    image: "https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?q=80&w=800&auto=format&fit=crop",
-    type: "วิดีโอ",
-    content: stringToEditorData("เทคนิคการเลือกพันธุ์ไม้และการดูแลหลังการปลูก...")
-  },
-];
-
-const mediaTypes = ["บทความ", "วิดีโอ"];
-const categories = ["ระบบนิเวศ", "แหล่งน้ำ", "สัตว์ป่า", "ภัยพิบัติ", "การอนุรักษ์"];
+const mediaTypes = ["Article", "Video"];
+const categories = ["Ecosystem", "Water Resources", "Wildlife", "Disasters", "Conservation"];
 
 // Helper to extract YouTube ID
 const getYouTubeEmbedUrl = (url) => {
@@ -166,17 +95,19 @@ const EditorContentRenderer = ({ content }) => {
 };
 
 export function KnowledgeManagementPage() {
-  const [resources, setResources] = useState(initialKnowledgeResources);
+  const [resources, setResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | 'view' | 'delete'
   const [selectedResourceId, setSelectedResourceId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
-    type: 'บทความ',
-    category: 'ระบบนิเวศ',
+    type: 'Article',
+    category: 'Ecosystem',
     excerpt: '',
     content: { blocks: [] },
     readTime: '',
@@ -185,6 +116,22 @@ export function KnowledgeManagementPage() {
     imageFile: null,
     imagePreview: '',
   });
+
+  const fetchResources = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.get('/api/knowledge');
+      setResources(data);
+    } catch {
+      // Resources don't exist yet or network error
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchResources();
+  }, [fetchResources]);
 
   const filteredResources = useMemo(() => {
     if (!searchQuery.trim()) return resources;
@@ -213,8 +160,8 @@ export function KnowledgeManagementPage() {
     } else {
       setFormData({
         title: '',
-        type: 'บทความ',
-        category: 'ระบบนิเวศ',
+        type: 'Article',
+        category: 'Ecosystem',
         excerpt: '',
         content: { blocks: [] },
         readTime: '',
@@ -271,58 +218,51 @@ export function KnowledgeManagementPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setIsSubmitting(true);
+    setActionError('');
 
     try {
-      let finalImageUrl = formData.image;
-      if (formData.imageFile) {
-        finalImageUrl = formData.imagePreview; 
-      }
+      const fd = new FormData();
+      fd.append('title', formData.title);
+      fd.append('type', formData.type);
+      fd.append('category', formData.category);
+      fd.append('excerpt', formData.excerpt);
+      fd.append('readTime', formData.readTime);
+      fd.append('videoUrl', formData.type === 'Video' ? formData.videoUrl : '');
+      fd.append('content', JSON.stringify(formData.content));
 
-      const payload = {
-        title: formData.title,
-        type: formData.type,
-        category: formData.category,
-        excerpt: formData.excerpt,
-        content: formData.content,
-        readTime: formData.readTime,
-        image: finalImageUrl,
-        videoUrl: formData.type === 'วิดีโอ' ? formData.videoUrl : '',
-      };
+      if (formData.imageFile) {
+        fd.append('image', formData.imageFile);
+      } else {
+        fd.append('imageUrl', formData.image || '');
+      }
 
       if (modalMode === 'add') {
-        const newResource = {
-          ...payload,
-          id: Date.now(),
-          date: new Date().toLocaleDateString('th-TH', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          }),
-        };
-        setResources(prev => [newResource, ...prev]);
+        await api.postForm('/api/knowledge', fd);
       } else if (modalMode === 'edit' && selectedResourceId) {
-        setResources(prev => prev.map(r =>
-          r.id === selectedResourceId ? { ...r, ...payload } : r
-        ));
+        await api.putForm(`/api/knowledge/${selectedResourceId}`, fd);
       }
+
+      await fetchResources();
       closeModal();
     } catch (err) {
-      setActionError('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      setActionError(err.message || 'Error saving data');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     setIsSubmitting(true);
+    setActionError('');
     try {
-      setResources(prev => prev.filter(r => r.id !== selectedResourceId));
+      await api.delete(`/api/knowledge/${selectedResourceId}`);
+      await fetchResources();
       closeModal();
     } catch (err) {
-      setActionError('เกิดข้อผิดพลาดในการลบข้อมูล');
+      setActionError(err.message || 'Error deleting data');
     } finally {
       setIsSubmitting(false);
     }
@@ -334,7 +274,7 @@ export function KnowledgeManagementPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Knowledge Management</h1>
           <p className="mt-1 text-sm text-gray-500">
-            จัดการบทความ วิดีโอ และสื่อการสอนสำหรับชุมชน (Powered by EditorJS)
+            Manage articles, videos, and educational materials for the community (Powered by EditorJS)
           </p>
         </div>
 
@@ -342,7 +282,7 @@ export function KnowledgeManagementPage() {
           <div className="relative w-full sm:w-80">
             <input
               type="text"
-              placeholder="ค้นหาตามชื่อ, หมวดหมู่, ประเภท..."
+              placeholder="Search by title, category, type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-10 w-full rounded-lg border border-gray-300 px-3 pr-10 text-sm text-gray-800 outline-none transition focus:border-green-500"
@@ -355,7 +295,7 @@ export function KnowledgeManagementPage() {
             className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700"
           >
             <Plus size={18} />
-            สร้างสื่อใหม่
+            Create New Media
           </button>
         </div>
       </header>
@@ -365,20 +305,20 @@ export function KnowledgeManagementPage() {
           <table className="w-full min-w-[940px] text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
               <tr>
-                <th className="px-4 py-3 font-semibold">ชื่อสื่อ</th>
-                <th className="px-4 py-3 font-semibold">ประเภท</th>
-                <th className="px-4 py-3 font-semibold">หมวดหมู่</th>
-                <th className="px-4 py-3 font-semibold">คำโปรย</th>
-                <th className="px-4 py-3 font-semibold">เวลาอ่าน/ชม</th>
-                <th className="px-4 py-3 font-semibold">วันที่</th>
-                <th className="px-4 py-3 text-right font-semibold">จัดการ</th>
+                <th className="px-4 py-3 font-semibold">Title</th>
+                <th className="px-4 py-3 font-semibold">Type</th>
+                <th className="px-4 py-3 font-semibold">Category</th>
+                <th className="px-4 py-3 font-semibold">Excerpt</th>
+                <th className="px-4 py-3 font-semibold">Read/Watch Time</th>
+                <th className="px-4 py-3 font-semibold">Date</th>
+                <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredResources.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-12 text-center text-gray-500">
-                    ไม่พบข้อมูลที่ค้นหา
+                    {isLoading ? 'Loading data...' : 'No media found'}
                   </td>
                 </tr>
               ) : (
@@ -392,7 +332,7 @@ export function KnowledgeManagementPage() {
                             alt=""
                             className="h-full w-full rounded object-cover border border-gray-100"
                           />
-                          {res.type === 'วิดีโอ' && (
+                          {res.type === 'Video' && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded">
                               <PlayCircle size={14} className="text-white fill-white/20" />
                             </div>
@@ -403,9 +343,9 @@ export function KnowledgeManagementPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        res.type === 'บทความ' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                        res.type === 'Article' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
                       }`}>
-                        {res.type === 'บทความ' ? <FileText size={12} /> : <Video size={12} />}
+                        {res.type === 'Article' ? <FileText size={12} /> : <Video size={12} />}
                         {res.type}
                       </span>
                     </td>
@@ -418,21 +358,21 @@ export function KnowledgeManagementPage() {
                         <button
                           onClick={() => openModal('view', res)}
                           className="rounded-lg p-1.5 text-sky-600 transition-colors hover:bg-sky-50"
-                          title="ดูรายละเอียด"
+                          title="View Details"
                         >
                           <Eye size={18} />
                         </button>
                         <button
                           onClick={() => openModal('edit', res)}
                           className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-amber-50"
-                          title="แก้ไข"
+                          title="Edit"
                         >
                           <Pencil size={18} />
                         </button>
                         <button
                           onClick={() => openModal('delete', res)}
                           className="rounded-lg p-1.5 text-rose-600 transition-colors hover:bg-rose-50"
-                          title="ลบ"
+                          title="Delete"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -455,9 +395,9 @@ export function KnowledgeManagementPage() {
           >
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <h2 className="text-lg font-bold text-gray-900">
-                {modalMode === 'add' ? 'สร้างสื่อใหม่' :
-                 modalMode === 'edit' ? 'แก้ไขสื่อ' :
-                 modalMode === 'view' ? 'รายละเอียดสื่อ' : 'ยืนยันการลบ'}
+                {modalMode === 'add' ? 'Create New Media' :
+                 modalMode === 'edit' ? 'Edit Media' :
+                 modalMode === 'view' ? 'Media Details' : 'Confirm Deletion'}
               </h2>
               <button onClick={closeModal} className="rounded-md p-1 text-gray-500 hover:bg-gray-100">
                 <X size={20} />
@@ -468,19 +408,19 @@ export function KnowledgeManagementPage() {
               {(modalMode === 'add' || modalMode === 'edit') && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="md:col-span-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">ชื่อสื่อ</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Media Title</label>
                     <input
                       type="text"
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                      placeholder={formData.type === 'วิดีโอ' ? 'เช่น วิดีโอสอนการป้องกันไฟป่า' : 'เช่น วิธีการแยกประเภทพันธุ์ไม้'}
+                      placeholder={formData.type === 'Video' ? 'e.g., Forest Fire Prevention Video' : 'e.g., How to Classify Tree Species'}
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">ประเภท</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Type</label>
                     <select
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value })}
@@ -491,7 +431,7 @@ export function KnowledgeManagementPage() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">หมวดหมู่</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Category</label>
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -503,7 +443,7 @@ export function KnowledgeManagementPage() {
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      {formData.type === 'วิดีโอ' ? 'ความยาววิดีโอ (เช่น 10:30 นาที)' : 'เวลาอ่านโดยประมาณ (เช่น 5 นาที)'}
+                      {formData.type === 'Video' ? 'Video Length (e.g., 10:30 mins)' : 'Estimated Read Time (e.g., 5 mins)'}
                     </label>
                     <input
                       type="text"
@@ -511,11 +451,11 @@ export function KnowledgeManagementPage() {
                       value={formData.readTime}
                       onChange={(e) => setFormData({ ...formData, readTime: e.target.value })}
                       className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                      placeholder={formData.type === 'วิดีโอ' ? 'เช่น 12:45 นาที' : 'เช่น 8 นาที'}
+                      placeholder={formData.type === 'Video' ? 'e.g., 12:45 mins' : 'e.g., 8 mins'}
                     />
                   </div>
 
-                  {formData.type === 'วิดีโอ' ? (
+                  {formData.type === 'Video' ? (
                     <div>
                       <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">YouTube / Video URL</label>
                       <input
@@ -529,7 +469,7 @@ export function KnowledgeManagementPage() {
                     </div>
                   ) : (
                     <div>
-                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">รูปภาพหน้าปก (Upload)</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Cover Image (Upload)</label>
                       <input
                         type="file"
                         accept="image/*"
@@ -545,26 +485,26 @@ export function KnowledgeManagementPage() {
                   )}
 
                   <div className="md:col-span-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">คำโปรย (Excerpt)</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Excerpt</label>
                     <textarea
                       rows={2}
                       required
                       value={formData.excerpt}
                       onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                       className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                      placeholder="สรุปเนื้อหาสั้นๆ เพื่อดึงดูดผู้อ่าน/ผู้ชม"
+                      placeholder="Briefly summarize the content to attract readers/viewers"
                     />
                   </div>
 
                   <div className="md:col-span-2">
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      {formData.type === 'วิดีโอ' ? 'รายละเอียดวิดีโอ' : 'เนื้อหาบทความ'}
+                      {formData.type === 'Video' ? 'Video Details' : 'Article Content'}
                     </label>
                     <Editor 
                       key={selectedResourceId || 'new'}
                       data={formData.content}
-                      onChange={(data) => setFormData({ ...formData, content: data })}
-                      placeholder={formData.type === 'วิดีโอ' ? 'ระบุรายละเอียดเพิ่มเติม' : 'พิมพ์เนื้อหาบทความที่นี่...'}
+                      onChange={(data) => setFormData(prev => ({ ...prev, content: data }))}
+                      placeholder={formData.type === 'Video' ? 'Provide additional details' : 'Type your article content here...'}
                     />
                   </div>
                 </div>
@@ -573,7 +513,7 @@ export function KnowledgeManagementPage() {
               {modalMode === 'view' && selectedResource && (
                 <div className="space-y-4">
                   <div className="relative overflow-hidden rounded-lg shadow-sm bg-black">
-                    {selectedResource.type === 'วิดีโอ' && selectedResource.videoUrl ? (
+                    {selectedResource.type === 'Video' && selectedResource.videoUrl ? (
                       <div className="aspect-video w-full">
                         <iframe
                           src={getYouTubeEmbedUrl(selectedResource.videoUrl)}
@@ -593,31 +533,31 @@ export function KnowledgeManagementPage() {
 
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
-                      <p className="text-[10px] uppercase font-bold text-gray-400">ประเภท</p>
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Type</p>
                       <div className="flex items-center gap-1.5 mt-1 text-gray-900 font-semibold">
-                        {selectedResource.type === 'บทความ' ? <FileText size={16} className="text-blue-500" /> : <Video size={16} className="text-purple-500" />}
+                        {selectedResource.type === 'Article' ? <FileText size={16} className="text-blue-500" /> : <Video size={16} className="text-purple-500" />}
                         {selectedResource.type}
                       </div>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
-                      <p className="text-[10px] uppercase font-bold text-gray-400">หมวดหมู่</p>
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Category</p>
                       <p className="mt-1 font-semibold text-gray-900">{selectedResource.category}</p>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
                       <p className="text-[10px] uppercase font-bold text-gray-400">
-                        {selectedResource.type === 'วิดีโอ' ? 'ความยาว' : 'เวลาอ่าน'}
+                        {selectedResource.type === 'Video' ? 'Duration' : 'Read Time'}
                       </p>
                       <p className="mt-1 font-semibold text-gray-900">{selectedResource.readTime}</p>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-3 border border-gray-100">
-                      <p className="text-[10px] uppercase font-bold text-gray-400">วันที่สร้าง</p>
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Created Date</p>
                       <p className="mt-1 font-semibold text-gray-900">{selectedResource.date}</p>
                     </div>
                   </div>
 
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900 leading-tight">{selectedResource.title}</h3>
-                    {selectedResource.videoUrl && selectedResource.type === 'วิดีโอ' && (
+                    {selectedResource.videoUrl && selectedResource.type === 'Video' && (
                       <a href={selectedResource.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1">
                         Original Link: {selectedResource.videoUrl}
                       </a>
@@ -632,7 +572,7 @@ export function KnowledgeManagementPage() {
                   <div className="border-t border-gray-100 pt-5">
                     <div className="flex items-center gap-2 mb-3 text-gray-400 text-xs font-bold uppercase tracking-widest">
                       <div className="h-px flex-1 bg-gray-100"></div>
-                      <span>{selectedResource.type === 'วิดีโอ' ? 'รายละเอียดเพิ่มเติม' : 'เนื้อหา'}</span>
+                      <span>{selectedResource.type === 'Video' ? 'Additional Details' : 'Content'}</span>
                       <div className="h-px flex-1 bg-gray-100"></div>
                     </div>
                     <EditorContentRenderer content={selectedResource.content} />
@@ -645,13 +585,13 @@ export function KnowledgeManagementPage() {
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-rose-600">
                     <Trash2 size={28} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900">ยืนยันการลบข้อมูล</h3>
+                  <h3 className="text-xl font-bold text-gray-900">Confirm Deletion</h3>
                   <p className="mt-2 text-gray-500 px-6">
-                    คุณกำลังจะลบสื่อเรื่อง <span className="font-bold text-gray-900">"{selectedResource.title}"</span> ออกจากระบบ
+                    You are about to delete <span className="font-bold text-gray-900">"{selectedResource.title}"</span> from the system.
                   </p>
                   <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded bg-rose-50 text-rose-700 text-xs font-bold">
                     <X size={14} />
-                    ไม่สามารถกู้คืนได้ภายหลัง
+                    This action cannot be undone.
                   </div>
                 </div>
               )}
@@ -669,7 +609,7 @@ export function KnowledgeManagementPage() {
                 className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                 disabled={isSubmitting}
               >
-                {modalMode === 'view' ? 'ปิดหน้าต่าง' : 'ยกเลิก'}
+                {modalMode === 'view' ? 'Close Window' : 'Cancel'}
               </button>
 
               {(modalMode === 'add' || modalMode === 'edit') && (
@@ -678,7 +618,7 @@ export function KnowledgeManagementPage() {
                   disabled={isSubmitting}
                   className="rounded-lg bg-green-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-700 shadow-sm transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? 'กำลังบันทึก...' : modalMode === 'add' ? 'บันทึกสื่อใหม่' : 'บันทึกการแก้ไข'}
+                  {isSubmitting ? 'Saving...' : modalMode === 'add' ? 'Save New Media' : 'Save Changes'}
                 </button>
               )}
 
@@ -688,7 +628,7 @@ export function KnowledgeManagementPage() {
                   disabled={isSubmitting}
                   className="rounded-lg bg-rose-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 shadow-sm transition-colors disabled:opacity-50"
                 >
-                  {isSubmitting ? 'กำลังลบ...' : 'ลบทันที'}
+                  {isSubmitting ? 'Deleting...' : 'Delete Now'}
                 </button>
               )}
             </div>

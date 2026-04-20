@@ -35,5 +35,6 @@ export const api = {
   post:     (endpoint, body) => request(endpoint, { method: 'POST',   body: JSON.stringify(body) }),
   postForm: (endpoint, formData) => request(endpoint, { method: 'POST', body: formData }),
   put:      (endpoint, body) => request(endpoint, { method: 'PUT',    body: JSON.stringify(body) }),
+  putForm:  (endpoint, formData) => request(endpoint, { method: 'PUT',  body: formData }),
   delete:   (endpoint)       => request(endpoint, { method: 'DELETE' }),
 };

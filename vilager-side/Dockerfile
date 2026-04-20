@@ -11,6 +11,8 @@ RUN npm run build
 FROM nginx:alpine
 # Copy ไฟล์ที่ Build เสร็จแล้ว (ปกติ Vite/React จะอยู่ที่ /dist, ส่วน Next.js จะเป็น /out)
 COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy custom nginx config to proxy /api and /static to backend
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # ตัว Dockerfile ยังคง EXPOSE 80 เป็นมาตรฐานของ Nginx
 EXPOSE 80

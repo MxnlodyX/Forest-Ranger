@@ -11,6 +11,7 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import '../../lib/leaflet-heat';
 import { FieldOpsNavigate } from './FieldOpsNavigate';
 import { useAppContext } from '../../context/useAppContext';
 import { api } from '../../services/api';
@@ -53,6 +54,33 @@ function RecenterOnPosition({ position }) {
         if (!position) return;
         map.setView(position, map.getZoom(), { animate: true });
     }, [map, position]);
+
+    return null;
+}
+
+function IncidentHeatLayer({ points, enabled }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (!enabled || !map) return undefined;
+
+        const heatPoints = points
+            .map((point) => [Number(point.lat), Number(point.lng), Math.max(0.1, Number(point.intensity || 1) / 5)])
+            .filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]) && Number.isFinite(point[2]));
+
+        const layer = L.heatLayer(heatPoints, {
+            radius: 22,
+            blur: 18,
+            maxZoom: 16,
+            minOpacity: 0.3,
+            gradient: { 0.2: '#22d3ee', 0.45: '#facc15', 0.8: '#f97316', 1: '#dc2626' },
+        });
+
+        layer.addTo(map);
+        return () => {
+            map.removeLayer(layer);
+        };
+    }, [map, points, enabled]);
 
     return null;
 }
@@ -168,6 +196,9 @@ export function FieldOpsMapPage() {
     const [gpsPosition, setGpsPosition] = useState(null);
     const [gpsError, setGpsError] = useState('');
     const [isGpsReady, setIsGpsReady] = useState(false);
+    const [incidentHeatPoints, setIncidentHeatPoints] = useState([]);
+    const [incidentHeatError, setIncidentHeatError] = useState('');
+    const [showIncidentHeatmap, setShowIncidentHeatmap] = useState(true);
 
     const selectedPoint = useMemo(
         () => activeWaypoints.find((point) => point.id === selectedPointId) ?? null,
@@ -216,6 +247,21 @@ export function FieldOpsMapPage() {
     useEffect(() => {
         loadRoutes();
     }, [loadRoutes]);
+
+    const loadIncidentHeatmap = useCallback(async () => {
+        try {
+            setIncidentHeatError('');
+            const data = await api.get('/api/heatmap/points?page=1&page_size=500');
+            const points = Array.isArray(data) ? data : data?.items || [];
+            setIncidentHeatPoints(points);
+        } catch (error) {
+            setIncidentHeatError(error.message || 'Unable to load hotspot data.');
+        }
+    }, []);
+
+    useEffect(() => {
+        loadIncidentHeatmap();
+    }, [loadIncidentHeatmap]);
 
     useEffect(() => {
         if (!navigator.geolocation) {
@@ -363,13 +409,27 @@ export function FieldOpsMapPage() {
                         <p className={`text-xs mt-2 ${isGpsReady ? 'text-emerald-400' : 'text-amber-300'}`}>
                             {isGpsReady ? 'Live GPS connected.' : gpsError || 'Waiting for GPS permission...'}
                         </p>
+                        {incidentHeatError ? <p className="text-xs mt-1 text-red-300">{incidentHeatError}</p> : null}
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setShowIncidentHeatmap((prev) => !prev)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold border ${
+                            showIncidentHeatmap
+                                ? 'bg-rose-500/20 border-rose-400/40 text-rose-200'
+                                : 'bg-slate-700/40 border-slate-500/40 text-slate-300'
+                        }`}
+                    >
+                        {showIncidentHeatmap ? 'Heatmap ON' : 'Heatmap OFF'}
+                    </button>
 
                 </div>
 
                 <div className="h-64 overflow-hidden rounded-2xl border border-slate-700/60">
                     <MapContainer center={mapCenter} zoom={12} className="w-full h-full" scrollWheelZoom>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <IncidentHeatLayer points={incidentHeatPoints} enabled={showIncidentHeatmap} />
 
                         {gpsPosition && (
                             <Marker position={gpsPosition} icon={currentLocationIcon}>
@@ -388,6 +448,22 @@ export function FieldOpsMapPage() {
                             >
                                 <Popup>{point.name}</Popup>
                             </Marker>
+                        ))}
+
+                        {showIncidentHeatmap && incidentHeatPoints.map((point) => (
+                            <CircleMarker
+                                key={`incident-${point.incident_id}`}
+                                center={[Number(point.lat), Number(point.lng)]}
+                                radius={Math.max(4, Number(point.intensity || 1) * 1.4)}
+                                pathOptions={{ color: '#f97316', fillOpacity: 0.4, weight: 1 }}
+                            >
+                                <Popup>
+                                    <div className="text-xs">
+                                        <p className="font-bold">{point.incident_title || 'Incident'}</p>
+                                        <p>{point.event_type} • {point.area_id}</p>
+                                    </div>
+                                </Popup>
+                            </CircleMarker>
                         ))}
 
                         {selectedRoutePositions.length > 1 && (

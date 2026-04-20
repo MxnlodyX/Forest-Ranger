@@ -21,6 +21,11 @@ export default defineConfig({
       '/static': {
         target: 'http://backend:5000',
         changeOrigin: true,
+      },
+      // AI service predict endpoint
+      '/predict': {
+        target: 'http://ai_service:3000',
+        changeOrigin: true,
       }
     }
   }

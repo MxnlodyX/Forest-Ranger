@@ -88,7 +88,7 @@ def _sync_staff_status(cursor, staff_id):
         """,
         (normalized_staff_id, ACTIVE_TASK_STATUSES[0], ACTIVE_TASK_STATUSES[1]),
     )
-    active_task_count = (cursor.fetchone() or {}).get('active_task_count', 0)
+    active_task_count = int((cursor.fetchone() or {}).get('active_task_count') or 0)
     next_status = 'On Duty' if active_task_count > 0 else 'Active'
     db_status = _status_for_db_write(cursor, next_status)
 
@@ -274,11 +274,11 @@ def update_task(task_id):
     fields, values = [], []
     for key in allowed_cols:
         if key in payload:
-            fields.append(f"{key} = %s")
             val = payload[key]
-            # Treat empty string as NULL for nullable fields
+            # Treat empty string as NULL for nullable fields (convert BEFORE appending)
             if val == '' and key not in ('task_title',):
                 val = None
+            fields.append(f"{key} = %s")
             values.append(val)
 
     if not fields:
@@ -293,14 +293,6 @@ def update_task(task_id):
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            cursor.execute("SELECT assigned_to FROM task WHERE task_id = %s", (task_id,))
-            before_task = cursor.fetchone()
-            if not before_task:
-                conn.close()
-                return jsonify({"error": "Task not found"}), 404
-
-            previous_assigned_to = _to_int_or_none(before_task.get('assigned_to'))
-
             if 'assigned_to' in payload and payload.get('assigned_to') and not _id_exists(cursor, 'staff', 'staff_id', payload.get('assigned_to')):
                 conn.close()
                 return jsonify({"error": "assigned_to staff not found"}), 404
@@ -313,17 +305,25 @@ def update_task(task_id):
                 f"UPDATE task SET {', '.join(fields)} WHERE task_id = %s",
                 values,
             )
-            conn.commit()
+            if cursor.rowcount == 0:
+                conn.close()
+                return jsonify({"error": "Task not found"}), 404
+
+            # Fetch updated task (also gives us current assigned_to for sync)
             cursor.execute(_TASK_SELECT + " WHERE t.task_id = %s", (task_id,))
             task = cursor.fetchone()
             if not task:
                 conn.close()
                 return jsonify({"error": "failed to load updated task"}), 500
 
+            # Sync staff status — use new assigned_to; old value not tracked
+            # (safe because _sync_staff_status is idempotent)
             current_assigned_to = _to_int_or_none((task or {}).get('assigned_to'))
-            _sync_staff_status(cursor, previous_assigned_to)
-            if current_assigned_to != previous_assigned_to:
-                _sync_staff_status(cursor, current_assigned_to)
+            _sync_staff_status(cursor, current_assigned_to)
+            if 'assigned_to' in payload:
+                previous_assigned_to = _to_int_or_none(payload.get('assigned_to'))
+                if previous_assigned_to != current_assigned_to:
+                    _sync_staff_status(cursor, previous_assigned_to)
             conn.commit()
         conn.close()
         return jsonify(_serialize_row(task))
@@ -354,15 +354,37 @@ def delete_task(task_id):
 
             previous_assigned_to = _to_int_or_none(task.get('assigned_to'))
             cursor.execute("DELETE FROM task WHERE task_id = %s", (task_id,))
-            _sync_staff_status(cursor, previous_assigned_to)
-            conn.commit()
             if cursor.rowcount == 0:
                 conn.close()
-                return jsonify({"message": "Task already deleted"}), 200
+                return jsonify({"error": "Task not found"}), 404
+            _sync_staff_status(cursor, previous_assigned_to)
+            conn.commit()
         conn.close()
         return jsonify({"message": "Task deleted successfully"})
     except Exception as exc:
         return jsonify({"error": f"internal server error: {exc}"}), 500
+
+
+# ---------------------------------------------------------------------------
+# GET /api/public/locations — all locations (for villager side, no auth)
+# ---------------------------------------------------------------------------
+@task_bp.route('/api/public/locations', methods=['GET'])
+def get_public_locations():
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT location_id, location_name
+                FROM location
+                ORDER BY location_name ASC
+                """
+            )
+            rows = cursor.fetchall()
+        conn.close()
+        return jsonify([_serialize_row(r) for r in rows])
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
 
 
 # ---------------------------------------------------------------------------

@@ -62,7 +62,7 @@ const ANALYSIS_STEPS = [
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const SUSPICIOUS_THRESHOLD = 75;
-const AI_API_URL = "http://localhost:3000/predict";
+const AI_API_URL = import.meta.env.VITE_AI_SERVICE_URL || "/predict";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function nowTimestamp() {

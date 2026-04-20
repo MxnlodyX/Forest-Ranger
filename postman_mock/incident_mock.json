@@ -1,0 +1,98 @@
+[
+  {
+    "incident_title": "Elephant Sighting near Waterfall",
+    "incident_type": "Wildlife Sighting",
+    "description": "A group of 3 wild elephants spotted crossing the stream near the patrol point. No immediate danger to tourists, but monitoring is required.",
+    "location_id": 1,
+    "reported_by": 2,
+    "image_urls": ["/static/uploads/elephant_01.jpg"]
+  },
+  {
+    "incident_title": "Suspicious Snares Found",
+    "incident_type": "Poaching Activity",
+    "description": "Found 4 wire snares hidden in the underbrush 200m East of the trailhead. Snares have been removed and logged.",
+    "location_id": 2,
+    "reported_by": 2,
+    "image_urls": ["/static/uploads/snare_01.jpg", "/static/uploads/snare_02.jpg"]
+  },
+  {
+    "incident_title": "Small Brush Fire",
+    "incident_type": "Forest Fire",
+    "description": "Minor fire detected near the rocks. Likely caused by a discarded cigarette. Extinguished by the patrol team.",
+    "location_id": 1,
+    "reported_by": 2,
+    "image_urls": ["/static/uploads/fire_sm_01.jpg"]
+  },
+  {
+    "incident_title": "Injured Sambar Deer",
+    "incident_type": "Injured Animal",
+    "description": "Male Sambar deer found with a leg injury. Veterinary team has been notified for pickup.",
+    "location_id": 2,
+    "reported_by": 2,
+    "image_urls": ["/static/uploads/deer_injury.jpg"]
+  },
+  {
+    "incident_title": "Unauthorized Night Camping",
+    "incident_type": "Illegal Activity",
+    "description": "Group of 4 tourists found camping outside designated zones. Issued warnings and escorted back to the main site.",
+    "location_id": 1,
+    "reported_by": 2,
+    "image_urls": []
+  },
+  {
+    "incident_title": "Fresh Cut Tree Stumps",
+    "incident_type": "Illegal Logging",
+    "description": "Discovery of 2 freshly cut Rosewood trees. Area cordoned off for investigation.",
+    "location_id": 2,
+    "reported_by": 2,
+    "image_urls": ["/static/uploads/logging_01.jpg"]
+  },
+  {
+    "incident_title": "Heavy Littering at Picnic Area",
+    "incident_type": "Littering",
+    "description": "Large amount of plastic waste left behind by weekend visitors. Cleanup requested.",
+    "location_id": 1,
+    "reported_by": 1,
+    "image_urls": ["/static/uploads/trash_pool.jpg"]
+  },
+  {
+    "incident_title": "Flash Flood Warning Level 1",
+    "incident_type": "Weather Warning",
+    "description": "Water level in the stream has risen by 50cm following heavy rain upstream. Recommend temporary closure of the waterfall path.",
+    "location_id": 1,
+    "reported_by": 2,
+    "image_urls": ["/static/uploads/flood_monitor.jpg"]
+  },
+  {
+    "incident_title": "Broken Safety Railing",
+    "incident_type": "Equipment Failure",
+    "description": "The wooden railing on the East trail is rotted and has partially collapsed. Hazardous for hikers.",
+    "location_id": 2,
+    "reported_by": 1,
+    "image_urls": ["/static/uploads/broken_rail.jpg"]
+  },
+  {
+    "incident_title": "Rare Hornbill Nesting",
+    "incident_type": "Wildlife Sighting",
+    "description": "Great Hornbill pair spotted nesting in a large Dipterocarp tree. Requesting restricted access to this specific trail section.",
+    "location_id": 2,
+    "reported_by": 2,
+    "image_urls": ["/static/uploads/hornbill_nest.jpg"]
+  },
+  {
+    "incident_title": "Suspicious Vehicle Spotted",
+    "incident_type": "Security Alert",
+    "description": "Black pickup truck with no license plate seen near the eastern boundary at 02:00 AM.",
+    "location_id": 2,
+    "reported_by": 2,
+    "image_urls": []
+  },
+  {
+    "incident_title": "Oil Spill in Stream",
+    "incident_type": "Pollution",
+    "description": "Observed oil sheen on the water surface near the waterfall basin. Source unknown.",
+    "location_id": 1,
+    "reported_by": 1,
+    "image_urls": ["/static/uploads/oil_spill.jpg"]
+  }
+]

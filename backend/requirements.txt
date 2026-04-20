@@ -15,3 +15,4 @@ pytest-html==4.1.1
 
 # --- SR_009: Gemini LLM integration ---
 google-genai==1.16.0
+Flask-Mail==0.10.0

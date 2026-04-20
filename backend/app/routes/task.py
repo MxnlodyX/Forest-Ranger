@@ -366,6 +366,28 @@ def delete_task(task_id):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/public/locations — all locations (for villager side, no auth)
+# ---------------------------------------------------------------------------
+@task_bp.route('/api/public/locations', methods=['GET'])
+def get_public_locations():
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT location_id, location_name
+                FROM location
+                ORDER BY location_name ASC
+                """
+            )
+            rows = cursor.fetchall()
+        conn.close()
+        return jsonify([_serialize_row(r) for r in rows])
+    except Exception:
+        return jsonify({"error": "internal server error"}), 500
+
+
+# ---------------------------------------------------------------------------
 # GET /api/locations  — all locations (used by front-end dropdown)
 # ---------------------------------------------------------------------------
 @task_bp.route('/api/locations', methods=['GET'])

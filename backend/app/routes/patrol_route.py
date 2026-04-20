@@ -118,6 +118,26 @@ def _can_access_route(route: dict, staff_role: str, staff_id: int) -> bool:
     return route.get('created_by') == staff_id
 
 
+@patrol_route_bp.route('/api/public/patrol-routes', methods=['GET'])
+def get_public_patrol_routes():
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT route_id, route_name
+                FROM patrol_route
+                WHERE status = 'Active'
+                ORDER BY route_name ASC
+                """
+            )
+            routes = [_serialize_row(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify(routes)
+    except Exception:
+        return jsonify({'error': 'internal server error'}), 500
+
+
 @patrol_route_bp.route('/api/patrol-routes', methods=['GET'])
 @require_auth({'Back-Office', 'Field-Ops'})
 def get_patrol_routes():

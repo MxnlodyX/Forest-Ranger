@@ -1,13 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { incidentTemplates } from './mockData';
+import { INCIDENT_TYPES, getIncidentLabel } from '../../utils/constants';
 import { useAppContext } from '../../context/useAppContext';
 import { useApi } from '../../hooks/useApi';
 import { api, resolveMediaUrl } from '../../services/api';
 
-const defaultIncidentType = incidentTemplates?.[0]?.id || 'wildlife';
+const defaultIncidentType = INCIDENT_TYPES[0].id;
 
 function formatType(typeId) {
-    return incidentTemplates?.find((item) => item.id === typeId)?.label ?? typeId;
+    return getIncidentLabel(typeId);
 }
 
 function formatDateTime(value) {
@@ -435,7 +435,7 @@ export function FieldOpsReportPage() {
                                             className="mt-2 w-full bg-[#111820] border border-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-lg px-4 py-3 text-sm text-slate-100 outline-none transition-all"
                                             disabled={isSubmitting}
                                         >
-                                            {incidentTemplates?.map((template) => (
+                                            {INCIDENT_TYPES.map((template) => (
                                                 <option key={template.id} value={template.id}>
                                                     {template.label}
                                                 </option>

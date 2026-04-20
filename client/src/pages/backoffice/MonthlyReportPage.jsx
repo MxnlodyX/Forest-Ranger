@@ -109,18 +109,18 @@ function MarkdownRenderer({ text }) {
 // ---------------------------------------------------------------------------
 const CURRENT_YEAR = new Date().getFullYear();
 const MONTH_OPTIONS = [
-  { value: 1,  label: 'มกราคม' },
-  { value: 2,  label: 'กุมภาพันธ์' },
-  { value: 3,  label: 'มีนาคม' },
-  { value: 4,  label: 'เมษายน' },
-  { value: 5,  label: 'พฤษภาคม' },
-  { value: 6,  label: 'มิถุนายน' },
-  { value: 7,  label: 'กรกฎาคม' },
-  { value: 8,  label: 'สิงหาคม' },
-  { value: 9,  label: 'กันยายน' },
-  { value: 10, label: 'ตุลาคม' },
-  { value: 11, label: 'พฤศจิกายน' },
-  { value: 12, label: 'ธันวาคม' },
+  { value: 1, label: 'January' },
+  { value: 2, label: 'February' },
+  { value: 3, label: 'March' },
+  { value: 4, label: 'April' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'June' },
+  { value: 7, label: 'July' },
+  { value: 8, label: 'August' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'October' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'December' },
 ];
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 
@@ -179,7 +179,7 @@ export function MonthlyReportPage() {
       setSummary(data.summary_markdown);
       setCachedExists(true);
     } catch (err) {
-      setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+      setError(err.message || 'An error occurred. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -193,7 +193,7 @@ export function MonthlyReportPage() {
   const monthLabel = MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label ?? '';
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-12xl mx-auto">
       {/* ── Print stylesheet ─────────────────────── */}
       <style>{`
         @media print {
@@ -216,19 +216,19 @@ export function MonthlyReportPage() {
           <FileText size={22} className="text-emerald-700" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">รายงานสรุปรายเดือน</h1>
-          <p className="text-sm text-gray-500 mt-0.5">สร้างรายงานสรุป Incident Report ด้วย AI อัตโนมัติ</p>
+          <h1 className="text-2xl font-bold text-gray-900">Monthly Summary Report</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Generate Incident Report summaries automatically with AI</p>
         </div>
       </div>
 
       {/* ── Form Card ────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
-        <h2 className="text-base font-semibold text-gray-800 mb-4">เลือกช่วงเวลา</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-4">Select Period</h2>
 
         <div className="flex flex-wrap gap-4 items-end">
           {/* Month selector */}
           <div className="flex flex-col gap-1.5 min-w-[160px]">
-            <label className="text-xs font-medium text-gray-600">เดือน</label>
+            <label className="text-xs font-medium text-gray-600">Month</label>
             <div className="relative">
               <select
                 value={selectedMonth}
@@ -245,7 +245,7 @@ export function MonthlyReportPage() {
 
           {/* Year selector */}
           <div className="flex flex-col gap-1.5 min-w-[120px]">
-            <label className="text-xs font-medium text-gray-600">ปี (ค.ศ.)</label>
+            <label className="text-xs font-medium text-gray-600">Year</label>
             <div className="relative">
               <select
                 value={selectedYear}
@@ -269,7 +269,7 @@ export function MonthlyReportPage() {
             {previewLoading
               ? <Loader2 size={15} className="animate-spin" />
               : <FileText size={15} />}
-            ดูข้อมูลเหตุการณ์
+            Preview Incidents
           </button>
 
           {/* Generate button */}
@@ -279,8 +279,8 @@ export function MonthlyReportPage() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors disabled:opacity-60 shadow-sm"
           >
             {generating
-              ? <><Loader2 size={15} className="animate-spin" /> กำลังสร้าง...</>
-              : <><Sparkles size={15} />{cachedExists ? 'สร้างใหม่' : 'สร้างรายงาน'}</>}
+              ? <><Loader2 size={15} className="animate-spin" /> Generating...</>
+              : <><Sparkles size={15} />{cachedExists ? 'Regenerate' : 'Generate Report'}</>}
           </button>
         </div>
 
@@ -288,7 +288,7 @@ export function MonthlyReportPage() {
         {cachedExists === true && !summary && (
           <p className="mt-3 text-xs text-emerald-600 flex items-center gap-1.5">
             <RefreshCw size={12} />
-            มีรายงานสรุปที่เคยสร้างไว้แล้วสำหรับเดือนนี้ — กด "ดูผลลัพธ์" ด้านบนหรือ "สร้างใหม่" เพื่ออัปเดต
+            A summary already exists for this month — click "Regenerate" to update
           </p>
         )}
       </div>
@@ -305,21 +305,21 @@ export function MonthlyReportPage() {
       {previewData && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
           <h2 className="text-base font-semibold text-gray-800 mb-3">
-            ข้อมูลเหตุการณ์เดือน{monthLabel} {selectedYear}
-            <span className="ml-2 text-sm font-normal text-gray-500">({previewData.count} รายการ)</span>
+            Incident Data for {monthLabel} {selectedYear}
+            <span className="ml-2 text-sm font-normal text-gray-500">({previewData.count} items)</span>
           </h2>
 
           {previewData.count === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">ไม่มีรายงานเหตุการณ์ในเดือนนี้</p>
+            <p className="text-sm text-gray-400 py-4 text-center">No incidents reported this month</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
-                    <th className="pb-2 pr-4 font-medium">วันที่</th>
-                    <th className="pb-2 pr-4 font-medium">ชื่อเหตุการณ์</th>
-                    <th className="pb-2 pr-4 font-medium">ประเภท</th>
-                    <th className="pb-2 font-medium">พื้นที่</th>
+                    <th className="pb-2 pr-4 font-medium">Date</th>
+                    <th className="pb-2 pr-4 font-medium">Incident Title</th>
+                    <th className="pb-2 pr-4 font-medium">Type</th>
+                    <th className="pb-2 font-medium">Area</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -348,7 +348,7 @@ export function MonthlyReportPage() {
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-emerald-600" />
               <h2 className="text-base font-semibold text-gray-800">
-                ผลลัพธ์: สรุปรายงานเดือน{monthLabel} {selectedYear}
+                Result: {monthLabel} {selectedYear} Summary
               </h2>
             </div>
             <button
@@ -363,16 +363,16 @@ export function MonthlyReportPage() {
           {/* Print header (visible only on print) */}
           <div className="hidden print:block mb-6">
             <h1 className="text-xl font-bold text-gray-900">
-              รายงานสรุปเดือน{monthLabel} {selectedYear}
+              {monthLabel} {selectedYear} Summary Report
             </h1>
-            <p className="text-sm text-gray-500 mt-1">สร้างโดย Forest Shield — Forest Ranger Management System</p>
+            <p className="text-sm text-gray-500 mt-1">Generated by Forest Shield — Forest Ranger Management System</p>
             <hr className="mt-3" />
           </div>
 
           {generating ? (
             <div className="flex flex-col items-center py-16 gap-3 text-gray-400">
               <Loader2 size={32} className="animate-spin text-emerald-500" />
-              <p className="text-sm">AI กำลังวิเคราะห์และสรุปข้อมูล...</p>
+              <p className="text-sm">AI is analyzing and summarizing data...</p>
             </div>
           ) : (
             <div className="prose-like">

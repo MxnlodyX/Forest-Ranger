@@ -102,7 +102,7 @@ export function ArticleDetail() {
         {resource && !isLoading && (
           <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             {/* Cover / Video */}
-            {resource.type === 'วิดีโอ' && resource.videoUrl ? (
+            {(resource.type === 'วิดีโอ' || resource.type === 'Video') && resource.videoUrl ? (
               <div className="aspect-video w-full bg-black">
                 <iframe
                   src={getYouTubeEmbedUrl(resource.videoUrl)}

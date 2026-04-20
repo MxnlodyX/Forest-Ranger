@@ -62,11 +62,11 @@ def _parse_coordinate_pair(raw_coordinate):
 
 def _derive_intensity(incident_type: str | None) -> int:
     value = (incident_type or '').strip().lower()
-    if value in {'fire', 'emergency', 'poaching', 'illegal logging'}:
+    if value in {'fire', 'emergency', 'poaching', 'logging'}:
         return 5
-    if value in {'hazard', 'trap', 'injury', 'conflict'}:
+    if value in {'damage'}:
         return 4
-    if value in {'wildlife', 'damage'}:
+    if value in {'wildlife', 'flood'}:
         return 3
     if value:
         return 2

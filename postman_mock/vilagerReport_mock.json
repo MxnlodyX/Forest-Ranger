@@ -1,0 +1,77 @@
+[
+  {
+    "incident_type": "fire",
+    "urgency": "emergency",
+    "location_id": 4,
+    "reporter_name": "สมชาย รักป่า",
+    "reporter_phone": "081-222-3344",
+    "reporter_email": "somchai.forest@gmail.com",
+    "description": "พบกลุ่มควันขนาดใหญ่พุ่งขึ้นมาจากบริเวณป่าหลังจุดกางเต็นท์ลำตะคอง ลมค่อนข้างแรง กลัวไฟจะลามเข้าใกล้เต็นท์นักท่องเที่ยวครับ"
+  },
+  {
+    "incident_type": "wildlife",
+    "urgency": "urgent",
+    "location_id": 5,
+    "reporter_name": "ป้าสมร ชาวไร่",
+    "reporter_phone": "089-111-2233",
+    "reporter_email": "samorn.p@hotmail.com",
+    "description": "มีช้างป่าตัวใหญ่หลุดออกมาจากแนวป่า เดินวนเวียนอยู่ใกล้หอคอยชมสัตว์หนองผักชี ชาวบ้านแถวนี้เริ่มตกใจ ไม่กล้าออกจากบ้าน"
+  },
+  {
+    "incident_type": "flood",
+    "urgency": "normal",
+    "location_id": 1,
+    "reporter_name": "วิชัย มั่นคง",
+    "reporter_phone": "082-333-4455",
+    "reporter_email": "wichai.m@gmail.com",
+    "description": "น้ำในลำธารเริ่มเปลี่ยนเป็นสีขุ่นแดง และระดับน้ำสูงขึ้นอย่างรวดเร็วหลังจากฝนตกหนักต่อเนื่องมา 3 ชั่วโมง แจ้งเจ้าหน้าที่เฝ้าระวังน้ำป่าหลากครับ"
+  },
+  {
+    "incident_type": "other",
+    "other_detail": "ลักลอบตัดไม้",
+    "urgency": "urgent",
+    "location_id": 2,
+    "reporter_name": "นิคม เดินป่า",
+    "reporter_phone": "085-444-5566",
+    "reporter_email": "nikhom.hiker@yahoo.com",
+    "description": "ได้ยินเสียงเลื่อยยนต์ดังมาจากทางทิศตะวันออกของเส้นทางศึกษาธรรมชาติผากล้วยไม้ ประมาณ 500 เมตร พบรถกระบะต้องสงสัยจอดทิ้งไว้ชายป่า"
+  },
+  {
+    "incident_type": "wildlife",
+    "urgency": "normal",
+    "location_id": 4,
+    "reporter_name": "สายชล ใจดี",
+    "reporter_phone": "086-555-6677",
+    "reporter_email": "saichon.c@gmail.com",
+    "description": "ลิงป่ารบกวนนักท่องเที่ยวหนักมากที่จุดกางเต็นท์ลำตะคอง รื้อค้นกระเป๋าและแย่งอาหารคน แจ้งเจ้าหน้าที่มาช่วยดูแลความปลอดภัยหน่อยครับ"
+  },
+  {
+    "incident_type": "other",
+    "other_detail": "ทิ้งขยะไม่เป็นที่",
+    "urgency": "normal",
+    "location_id": 3,
+    "reporter_name": "มานะ พิทักษ์",
+    "reporter_phone": "087-666-7788",
+    "reporter_email": "mana.p@outlook.com",
+    "description": "นักท่องเที่ยวทิ้งถุงพลาสติกและเศษอาหารไว้เกลื่อนกลาดที่จุดชมวิวเหวนรก หวั่นสัตว์ป่าจะมากินเข้าไปแล้วเกิดอันตราย"
+  },
+  {
+    "incident_type": "fire",
+    "urgency": "emergency",
+    "location_id": 6,
+    "reporter_name": "กนกพล รวยรื่น",
+    "reporter_phone": "088-777-8899",
+    "reporter_email": "kanokpol.r@gmail.com",
+    "description": "เกิดไฟไหม้ป่าหญ้าบริเวณใกล้จุดชมวิวเขาเขียว เห็นเปลวไฟชัดเจนและมีขี้เถ้าปลิวว่อนไปทั่วพื้นที่"
+  },
+  {
+    "incident_type": "other",
+    "other_detail": "พบผู้พลัดหลง",
+    "urgency": "urgent",
+    "location_id": 7,
+    "reporter_name": "สุนีย์ มีสุข",
+    "reporter_phone": "084-888-9900",
+    "reporter_email": "sunee.me@gmail.com",
+    "description": "พบน้องนักเรียนเดินโซเซหลงออกมาจากทางเดินป่าใกล้ศูนย์สัมมนาโมสิงโต มีอาการขาดน้ำและดูอ่อนแรงมาก ตอนนี้ให้นั่งพักรอนะคะ"
+  }
+]

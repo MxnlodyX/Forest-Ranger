@@ -167,6 +167,46 @@ CREATE TABLE IF NOT EXISTS incident_image (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS public_alert (
+    alert_id INT AUTO_INCREMENT,
+    incident_type ENUM('fire', 'flood', 'wildlife', 'other') NOT NULL,
+    other_detail TEXT,
+    urgency ENUM('normal', 'urgent', 'emergency') DEFAULT 'normal',
+    location_id INT,
+    reporter_name VARCHAR(255),
+    reporter_phone VARCHAR(50) NOT NULL,
+    reporter_email VARCHAR(255),
+    description TEXT,
+    status ENUM('Pending', 'Received', 'In Progress', 'Resolved', 'Rejected') DEFAULT 'Pending',
+    staff_comments TEXT,
+    handled_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (alert_id),
+    KEY idx_public_alert_location (location_id),
+    KEY idx_public_alert_handled_by (handled_by),
+    CONSTRAINT fk_public_alert_location
+        FOREIGN KEY (location_id) REFERENCES location(location_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_public_alert_handled_by
+        FOREIGN KEY (handled_by) REFERENCES staff(staff_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS public_alert_image (
+    image_id INT AUTO_INCREMENT,
+    alert_id INT NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (image_id),
+    CONSTRAINT fk_public_alert_image_alert_id
+        FOREIGN KEY (alert_id) REFERENCES public_alert(alert_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ============================================
 -- Seed data (MVP)
 -- ============================================
